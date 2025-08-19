@@ -9,10 +9,14 @@
       <button @click="setMode('pan')" :class="{ 'active-mode': chartMode === 'pan' }">Pan</button>
       <button @click="setMode('zoom')" :class="{ 'active-mode': chartMode === 'zoom' }">Zoom</button>
       <span class="separator">|</span> <!-- 分隔符 -->
+      <!-- 新增：后退和前进按钮 -->
+      <button @click="undoZoom" :disabled="historyStack.length <= 1">Undo</button>
+      <button @click="redoZoom" :disabled="forwardStack.length === 0">Redo</button>
+      <button @click="resetZoom">Reset</button>
+      <span class="separator">|</span>
       <!-- 原有的缩放按钮 -->
-      <button @click="zoomIn">Zoom In</button>
-      <button @click="zoomOut">Zoom Out</button>
-      <button @click="resetZoom">Reset Zoom</button>
+      <button @click="zoomIn">In</button>
+      <button @click="zoomOut">Out</button>
       <input type="range" min="1" max="10" step="0.1" :value="zoomLevel" @input="handleZoomSlider" class="zoom-slider" />
     </div>
   </div>
@@ -34,7 +38,55 @@ const props = defineProps({
 const chartCanvas = ref(null);
 let chartInstance = null;
 const zoomLevel = ref(1);
-const chartMode = ref('pan'); // 'pan' or 'zoom'
+const chartMode = ref('pan');
+
+// 新增：历史记录堆栈
+const historyStack = ref([]);
+const forwardStack = ref([]);
+let isUpdating = false; // 防止无限循环的锁
+let sliderTimeout = null; // 用于存储防抖的计时器
+
+// 保存当前状态到历史记录
+function saveState() {
+  if (!chartInstance) return;
+  const scales = chartInstance.options.scales;
+  historyStack.value.push({
+    x: { min: scales.x.min, max: scales.x.max },
+    y: { min: scales.y.min, max: scales.y.max },
+  });
+  forwardStack.value = []; // 新的操作会清空前进栈
+}
+
+// 后退
+function undoZoom() {
+  if (historyStack.value.length > 1) { // 至少保留一个初始状态
+    const currentState = historyStack.value.pop();
+    forwardStack.value.push(currentState);
+    const lastState = historyStack.value[historyStack.value.length - 1];
+    applyState(lastState);
+  }
+}
+
+// 前进
+function redoZoom() {
+  if (forwardStack.value.length > 0) {
+    const nextState = forwardStack.value.pop();
+    historyStack.value.push(nextState);
+    applyState(nextState);
+  }
+}
+
+// 应用状态到图表
+function applyState(state) {
+  if (chartInstance && state) {
+    chartInstance.options.scales.x.min = state.x.min;
+    chartInstance.options.scales.x.max = state.x.max;
+    chartInstance.options.scales.y.min = state.y.min;
+    chartInstance.options.scales.y.max = state.y.max;
+    chartInstance.update('none'); // 'none' 表示无动画更新
+    zoomLevel.value = chartInstance.getZoomLevel(); // 同步滑块
+  }
+}
 
 function zoomIn() {
   if (chartInstance) {
@@ -52,19 +104,29 @@ function zoomOut() {
 
 function resetZoom() {
   if (chartInstance) {
-    chartInstance.resetZoom();
-    zoomLevel.value = 1;
+    chartInstance.resetZoom('none');
+    // 不再手动调用 saveState()，完全依赖 onZoomComplete 回调
+    // 这可以避免状态竞争问题
   }
 }
 
+// 彻底改造 handleZoomSlider，加入防抖
 function handleZoomSlider(event) {
-  if (chartInstance) {
-    const newZoomLevel = parseFloat(event.target.value);
-    // Since chart.js zoom() is relative, we need to calculate the factor
-    const currentZoom = chartInstance.getZoomLevel();
-    chartInstance.zoom(newZoomLevel / currentZoom);
-    zoomLevel.value = newZoomLevel;
+  if (!chartInstance) return;
+
+  // 无论用户动多快，都先清除上一个待执行的缩放指令
+  if (sliderTimeout) {
+    clearTimeout(sliderTimeout);
   }
+
+  const newZoomLevel = parseFloat(event.target.value);
+
+  // 设置一个新的指令，在 50 毫秒后执行
+  sliderTimeout = setTimeout(() => {
+    const currentZoom = chartInstance.getZoomLevel();
+    // 计算缩放因子并执行缩放
+    chartInstance.zoom(newZoomLevel / currentZoom, 'none');
+  }, 50); // 50毫秒的延迟，可以在不影响体验的情况下极大提升性能
 }
 
 function setMode(mode) {
@@ -99,24 +161,21 @@ onMounted(() => {
           },
           zoom: {
             pan: {
-              enabled: true, // 默认启用平移
+              enabled: true,
               mode: 'xy',
+              onPanComplete: ({chart}) => { // 平移完成后保存状态
+                saveState();
+              }
             },
             zoom: {
-              // 核心改动在这里
-              drag: {
-                enabled: false, // 默认禁用拖拽缩放
-                borderColor: 'rgba(0, 123, 255, 0.5)',
-                borderWidth: 2,
-                backgroundColor: 'rgba(0, 123, 255, 0.1)'
+              // 核心改动：使用 onZoom 回调来实时同步滑块
+              onZoom: ({chart}) => {
+                zoomLevel.value = chart.getZoomLevel();
               },
-              wheel: {
-                enabled: false, // 禁用滚轮实时缩放，避免冲突和卡顿
-              },
-              pinch: {
-                enabled: true // 保留触摸板的双指缩放
-              },
-              mode: 'xy',
+              // 缩放完成后保存状态
+              onZoomComplete: ({chart}) => {
+                saveState();
+              }
             }
           }
         },
@@ -127,6 +186,8 @@ onMounted(() => {
       }
     });
   }
+  // 保存初始状态
+  setTimeout(() => saveState(), 100);
 });
 
 watch(() => props.chartData, (newData) => {
