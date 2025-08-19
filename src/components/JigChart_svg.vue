@@ -45,16 +45,31 @@
       />
     </svg>
 
-    <!-- Toolbar -->
+    <!-- Toolbar with Icons -->
     <div class="zoom-controls">
       <span class="title">{{ title }}</span>
       <span class="separator">|</span>
-      <button @click="setMode('pan')" :class="{ 'active-mode': mode === 'pan' }">Pan</button>
-      <button @click="setMode('zoom')" :class="{ 'active-mode': mode === 'zoom' }">Zoom</button>
+      <button @click="setMode('pan')" :class="{ 'active-mode': mode === 'pan' }" title="Pan Mode">
+        <!-- Pan Icon -->
+        <svg class="icon" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-12h2v4h4v2h-4v4h-2v-4H7v-2h4V8z"/></svg>
+      </button>
+      <button @click="setMode('zoom')" :class="{ 'active-mode': mode === 'zoom' }" title="Zoom Mode">
+        <!-- Zoom Icon -->
+        <svg class="icon" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+      </button>
       <span class="separator">|</span>
-      <button @click="undo" :disabled="history.length <= 1">Undo</button>
-      <button @click="redo" :disabled="forward.length === 0">Redo</button>
-      <button @click="reset">Reset</button>
+      <button @click="undo" :disabled="history.length <= 1" title="Undo">
+        <!-- Undo Icon -->
+        <svg class="icon" viewBox="0 0 24 24"><path d="M12.5 8c-2.65 0-5.05.99-6.9 2.6L2 7v9h9l-3.62-3.62c1.39-1.16 3.16-1.88 5.12-1.88 3.54 0 6.55 2.31 7.6 5.5l2.37-.78C20.36 11.23 16.72 8 12.5 8z"/></svg>
+      </button>
+      <button @click="redo" :disabled="forward.length === 0" title="Redo">
+        <!-- Redo Icon -->
+        <svg class="icon" viewBox="0 0 24 24"><path d="M18.4 10.6C16.55 8.99 14.15 8 11.5 8c-4.22 0-7.86 3.23-9.13 7.28l-2.37.78C1.45 10.31 5.94 6 11.5 6c2.65 0 5.05.99 6.9 2.6L22 5v9h-9l3.4-3.4z"/></svg>
+      </button>
+      <button @click="reset" title="Reset View">
+        <!-- Reset Icon -->
+        <svg class="icon" viewBox="0 0 24 24"><path d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/></svg>
+      </button>
       <span class="separator">|</span>
       <input
         type="range"
@@ -64,6 +79,7 @@
         :value="zoomLevel"
         @input="handleSlider"
         class="zoom-slider"
+        title="Zoom Level"
       />
     </div>
   </div>
@@ -330,8 +346,8 @@ function redo() {
 .cursor-zoom { cursor: crosshair; }
 
 .drag-rect {
-  fill: rgba(0, 123, 255, 0.1);
-  stroke: rgba(0, 123, 255, 0.5);
+  fill: rgba(52, 152, 219, 0.1);
+  stroke: rgba(52, 152, 219, 0.7);
   stroke-width: 0.5;
   stroke-dasharray: 2 2;
 }
@@ -378,5 +394,11 @@ function redo() {
 .zoom-slider {
   width: 150px;
   margin-left: 15px;
+}
+
+.icon {
+  width: 24px;
+  height: 24px;
+  fill: currentColor;
 }
 </style>

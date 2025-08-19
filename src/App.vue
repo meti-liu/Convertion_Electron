@@ -3,15 +3,11 @@
   <div id="app-container">
     <div class="sidebar">
       <h1 class="title">Jig Viewer</h1>
-      <button @click="loadAndProcessFiles" class="load-button">Load & Process Files</button>
+      <button @click="loadAndProcessFiles" class="load-button">Load Files</button>
     </div>
     <div class="main-content">
-      <div class="chart-container">
-        <JigChart :chartData="chartDataTop" title="Top Jig (Side A)" />
-      </div>
-      <div class="chart-container">
-        <JigChart :chartData="chartDataBot" title="Bottom Jig (Side B)" />
-      </div>
+      <JigChart :chartData="chartDataTop" title="Top Jig (Side A)" />
+      <JigChart :chartData="chartDataBot" title="Bottom Jig (Side B)" />
     </div>
   </div>
 </template>
@@ -84,47 +80,6 @@ const loadAndProcessFiles = async () => {
 </script>
 
 <style>
-#app-container {
-  display: flex;
-  height: 100vh;
-  font-family: sans-serif;
-}
-.sidebar {
-  width: 250px;
-  background-color: #f4f4f8;
-  padding: 20px;
-  flex-shrink: 0;
-}
-.main-content {
-  flex-grow: 1;
-  display: flex;
-  flex-direction: row;
-  padding: 10px;
-  gap: 10px;
-}
-.chart-container {
-  flex-grow: 1;
-  display: flex;
-  border: 1px solid #ccc;
-  border-radius: 8px;
-  min-width: 0;
-}
-.title {
-  font-size: 24px;
-  color: #333;
-  margin-bottom: 20px;
-}
-.load-button {
-  padding: 10px 15px;
-  font-size: 16px;
-  background-color: #42b983;
-  color: white;
-  border: none;
-  border-radius: 5px;
-  cursor: pointer;
-  transition: background-color 0.3s;
-}
-.load-button:hover {
-  background-color: #36a374;
-}
+/* Import the new global stylesheet */
+@import './assets/styles.css';
 </style>
