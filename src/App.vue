@@ -18,7 +18,7 @@
 
 <script setup>
 import { ref } from 'vue';
-import JigChart from './components/JigChart.vue';
+import JigChart from './components/JigChart_svg.vue';
 
 const chartDataTop = ref({ datasets: [] }); // 初始化为空结构
 const chartDataBot = ref({ datasets: [] }); // 初始化为空结构
