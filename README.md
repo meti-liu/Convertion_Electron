@@ -3,7 +3,7 @@
 
 Python 计算后端 (Convertion-py 文件夹)
 
-核心文件: convert2copy.py
+核心文件: json_script.py
 职责: 这是项目的“大脑”，负责所有的数据处理和复杂计算。它接收文件路径作为输入，执行所有必要的坐标变换（如翻转、交点计算、偏移量应用），然后将最终结果打包成 JSON 格式并打印出来。它不负责任何界面的显示。
 Electron + Vue 前端 (convertion_electron 文件夹)
 
@@ -17,7 +17,7 @@ createWindow(): 创建一个浏览器窗口，并加载你的 Vue 应用（由 V
 ipcMain.handle('run-processing', ...): 监听来自 Vue 应用的“开始处理”请求。
 当请求到达时，它会：
 弹出文件选择框。
-正确地找到并调用 convert2copy.py 脚本。
+正确地找到并调用 json_script.py 脚本。
 将用户选择的文件路径作为命令行参数传给 Python。
 耐心等待 Python 脚本执行完成，并捕获它打印出来的 JSON 数据。
 将捕获到的 JSON 字符串转换成 JavaScript 对象，然后返回给 Vue 应用。
@@ -38,9 +38,9 @@ ipcMain.handle('run-processing', ...): 监听来自 Vue 应用的“开始处理
 
 功能点	convert2.py (旧方式)	convertion_electron (新架构)
 读取文件	自己在脚本里定义文件路径	background.js 弹出文件选择框
-坐标计算	在 Python 脚本中完成	同样在 convert2copy.py 中完成
-交点计算	在 Python 脚本中完成	同样在 convert2copy.py 中完成
-坐标翻转	在 Python 脚本中完成	同样在 convert2copy.py 中完成
-应用偏移	在 Python 脚本中完成	同样在 convert2copy.py 中完成
+坐标计算	在 Python 脚本中完成	同样在 json_script.py 中完成
+交点计算	在 Python 脚本中完成	同样在 json_script.py 中完成
+坐标翻转	在 Python 脚本中完成	同样在 json_script.py 中完成
+应用偏移	在 Python 脚本中完成	同样在 json_script.py 中完成
 显示图像	使用 matplotlib 在 Python 中直接显示	Python 不显示，而是输出 JSON 数据，由 JigChart.vue 使用 Chart.js 显示
-总结: 你已经成功地将计算逻辑和显示逻辑分离开来。convert2copy.py 继承了 convert2.py 的所有计算能力，而 Electron+Vue 提供了一个更现代化、更具扩展性的用户界面。这个架构是完全正确的，并且已经能够达成你的最终目标。
+总结: 你已经成功地将计算逻辑和显示逻辑分离开来。json_script.py 继承了 convert2.py 的所有计算能力，而 Electron+Vue 提供了一个更现代化、更具扩展性的用户界面。这个架构是完全正确的，并且已经能够达成你的最终目标。

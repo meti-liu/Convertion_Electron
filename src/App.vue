@@ -51,7 +51,7 @@ const loadAndProcessFiles = async () => {
         label: 'ADR Pins - Side A',
         data: result.adr_data.side_a,
         backgroundColor: 'black',
-        pointRadius: 2,
+        pointRadius: 1,
         type: 'scatter',
       });
     }
@@ -74,7 +74,7 @@ const loadAndProcessFiles = async () => {
         label: 'ADR Pins - Side B',
         data: result.adr_data.side_b,
         backgroundColor: 'grey',
-        pointRadius: 2,
+        pointRadius: 1,
         type: 'scatter',
       });
     }
