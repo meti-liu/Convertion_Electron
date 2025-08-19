@@ -3,7 +3,7 @@
 
 Python 计算后端 (Convertion-py 文件夹)
 
-核心文件: convert2copy.py
+核心文件: json_script.py
 职责: 这是项目的“大脑”，负责所有的数据处理和复杂计算。它接收文件路径作为输入，执行所有必要的坐标变换（如翻转、交点计算、偏移量应用），然后将最终结果打包成 JSON 格式并打印出来。它不负责任何界面的显示。
 Electron + Vue 前端 (convertion_electron 文件夹)
 

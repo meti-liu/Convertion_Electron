@@ -1,5 +1,6 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
-contextBridge.exposeInMainWorld('electronAPI', {
-  processFiles: () => ipcRenderer.invoke('run-processing'),
+// 安全地将 selectFiles 函数暴露给渲染进程
+contextBridge.exposeInMainWorld('electron', {
+  selectFiles: () => ipcRenderer.invoke('select-files')
 });

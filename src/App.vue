@@ -20,65 +20,72 @@
 import { ref } from 'vue';
 import JigChart from './components/JigChart.vue';
 
-const chartDataTop = ref(null);
-const chartDataBot = ref(null);
+const chartDataTop = ref({ datasets: [] }); // 初始化为空结构
+const chartDataBot = ref({ datasets: [] }); // 初始化为空结构
 
 const loadAndProcessFiles = async () => {
-  const result = await window.electronAPI.processFiles();
-  if (result && result.rut_data) {
-    // 根据文件名精确分离 TOP 和 BOT 数据
-    const topRutData = result.rut_data.filter(data => 
-        data.filename.toUpperCase().includes('TOP')
-    );
-    const botRutData = result.rut_data.filter(data => 
-        data.filename.toUpperCase().includes('BOT')
-    );
+  try {
+    // 直接接收 background.js 解析好的对象，不再进行 JSON.parse
+    const parsedData = await window.electron.selectFiles();
 
-    // --- Top Jig Chart Data (Side A) ---
-    const topDatasets = topRutData.map((data, index) => ({
-      label: data.filename, // 使用文件名作为标签
-      data: data.coords.map(c => ({ x: c[0], y: c[1] })),
-      borderColor: ['red', 'blue', 'green'][index % 3],
-      borderWidth: 2,
-      showLine: true,
-      fill: false,
-      type: 'line',
-      pointRadius: 0,
-    }));
+    // 只有在成功获取到数据时才继续处理
+    if (parsedData && parsedData.rut_data) {
+      const separatedData = parsedData.rut_data.reduce((acc, item) => {
+        const jigType = item.filename.toUpperCase().includes('TOP') ? 'top' : 'bot';
+        acc[jigType].push({
+          label: `Jig ${item.filename}`,
+          data: item.coords,
+          borderColor: jigType === 'top' ? 'rgba(255, 99, 132, 1)' : 'rgba(54, 162, 235, 1)',
+          backgroundColor: 'rgba(0, 0, 0, 0)',
+          fill: false,
+          showLine: true,
+          type: 'line', // 明确指定图表类型
+        });
+        return acc;
+      }, { top: [], bot: [] });
 
-    if (result.adr_data?.side_a) {
-      topDatasets.push({
-        label: 'ADR Pins - Side A',
-        data: result.adr_data.side_a,
-        backgroundColor: 'black',
-        pointRadius: 2,
-        type: 'scatter',
-      });
+      // 使用正确的变量名 chartDataTop
+      chartDataTop.value = {
+        datasets: [
+          ...separatedData.top,
+          {
+            label: 'Side A',
+            data: parsedData.adr_data.side_a,
+            borderColor: 'rgba(75, 192, 192, 1)',
+            backgroundColor: 'rgba(75, 192, 192, 1)',
+            showLine: false,
+            type: 'scatter', // 明确指定图表类型
+          }
+        ]
+      };
+
+      // 使用正确的变量名 chartDataBot
+      chartDataBot.value = {
+        datasets: [
+          ...separatedData.bot,
+          {
+            label: 'Side B',
+            data: parsedData.adr_data.side_b,
+            borderColor: 'rgba(153, 102, 255, 1)',
+            backgroundColor: 'rgba(153, 102, 255, 1)',
+            showLine: false,
+            type: 'scatter', // 明确指定图表类型
+          }
+        ]
+      };
+    } else if (parsedData === null) {
+      // 用户取消了文件选择，不做任何事
+    } else {
+      // 数据格式不正确，重置图表
+      console.error("Received invalid data structure:", parsedData);
+      chartDataTop.value = { datasets: [] };
+      chartDataBot.value = { datasets: [] };
     }
-    chartDataTop.value = { datasets: topDatasets };
-
-    // --- Bottom Jig Chart Data (Side B) ---
-    const botDatasets = botRutData.map((data, index) => ({
-      label: data.filename, // 使用文件名作为标签
-      data: data.coords.map(c => ({ x: c[0], y: c[1] })),
-      borderColor: ['red', 'blue', 'green'][index % 3],
-      borderWidth: 2,
-      showLine: true,
-      fill: false,
-      type: 'line',
-      pointRadius: 0,
-    }));
-
-    if (result.adr_data?.side_b) {
-      botDatasets.push({
-        label: 'ADR Pins - Side B',
-        data: result.adr_data.side_b,
-        backgroundColor: 'grey',
-        pointRadius: 2,
-        type: 'scatter',
-      });
-    }
-    chartDataBot.value = { datasets: botDatasets };
+  } catch (error) {
+    console.error('Error processing files:', error);
+    // 发生任何错误都重置图表状态，并使用正确的变量名
+    chartDataTop.value = { datasets: [] };
+    chartDataBot.value = { datasets: [] };
   }
 };
 </script>
