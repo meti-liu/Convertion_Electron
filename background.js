@@ -21,7 +21,7 @@ app.whenReady().then(createWindow);
 
 // ... (app lifecycle events)
 
-ipcMain.handle('select-files', async () => {
+ipcMain.handle('process-files', async () => {
   // 1. Open file dialog to get file paths
   const { canceled, filePaths } = await dialog.showOpenDialog({
     properties: ['openFile', 'multiSelections'],

@@ -13,6 +13,7 @@
   "license": "ISC",
   "dependencies": {
     "chart.js": "^4.4.3",
+    "chartjs-plugin-downsample": "^1.1.0",
     "vue": "^3.4.0",
     "vue-chartjs": "^5.3.1"
   },

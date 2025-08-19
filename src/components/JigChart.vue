@@ -1,7 +1,15 @@
 <!-- src/components/JigChart.vue -->
 <template>
-  <div class="chart-wrapper">
-    <canvas ref="chartCanvas"></canvas>
+  <div class="chart-container">
+    <div class="chart-wrapper">
+      <canvas ref="chartCanvas"></canvas>
+    </div>
+    <div class="zoom-controls">
+      <button @click="zoomIn">Zoom In</button>
+      <button @click="zoomOut">Zoom Out</button>
+      <button @click="resetZoom">Reset Zoom</button>
+      <input type="range" min="1" max="10" step="0.1" :value="zoomLevel" @input="handleZoomSlider" class="zoom-slider" />
+    </div>
   </div>
 </template>
 
@@ -10,7 +18,7 @@ import { ref, onMounted, watch } from 'vue';
 import Chart from 'chart.js/auto';
 import zoomPlugin from 'chartjs-plugin-zoom';
 
-// 注册缩放插件
+// 注册插件
 Chart.register(zoomPlugin);
 
 const props = defineProps({
@@ -20,6 +28,38 @@ const props = defineProps({
 
 const chartCanvas = ref(null);
 let chartInstance = null;
+const zoomLevel = ref(1);
+
+function zoomIn() {
+  if (chartInstance) {
+    chartInstance.zoom(1.1);
+    zoomLevel.value = chartInstance.getZoomLevel();
+  }
+}
+
+function zoomOut() {
+  if (chartInstance) {
+    chartInstance.zoom(0.9);
+    zoomLevel.value = chartInstance.getZoomLevel();
+  }
+}
+
+function resetZoom() {
+  if (chartInstance) {
+    chartInstance.resetZoom();
+    zoomLevel.value = 1;
+  }
+}
+
+function handleZoomSlider(event) {
+  if (chartInstance) {
+    const newZoomLevel = parseFloat(event.target.value);
+    // Since chart.js zoom() is relative, we need to calculate the factor
+    const currentZoom = chartInstance.getZoomLevel();
+    chartInstance.zoom(newZoomLevel / currentZoom);
+    zoomLevel.value = newZoomLevel;
+  }
+}
 
 onMounted(() => {
   if (chartCanvas.value) {
@@ -77,9 +117,39 @@ watch(() => props.chartData, (newData) => {
 </script>
 
 <style scoped>
-.chart-wrapper {
+.chart-container {
   position: relative;
   width: 100%;
   height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.chart-wrapper {
+  position: relative;
+  flex-grow: 1;
+  width: 100%;
+  height: 100%;
+}
+
+.zoom-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px;
+  background-color: #f0f0f0;
+}
+
+.zoom-controls button {
+  margin: 0 5px;
+  padding: 5px 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.zoom-slider {
+  width: 150px;
+  margin-left: 15px;
 }
 </style>
