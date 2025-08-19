@@ -5,6 +5,11 @@
       <canvas ref="chartCanvas"></canvas>
     </div>
     <div class="zoom-controls">
+      <!-- 新的模式切换按钮 -->
+      <button @click="setMode('pan')" :class="{ 'active-mode': chartMode === 'pan' }">Pan</button>
+      <button @click="setMode('zoom')" :class="{ 'active-mode': chartMode === 'zoom' }">Zoom</button>
+      <span class="separator">|</span> <!-- 分隔符 -->
+      <!-- 原有的缩放按钮 -->
       <button @click="zoomIn">Zoom In</button>
       <button @click="zoomOut">Zoom Out</button>
       <button @click="resetZoom">Reset Zoom</button>
@@ -14,7 +19,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue';
+import { ref, onMounted, watch, reactive } from 'vue'; // 导入 reactive
 import Chart from 'chart.js/auto';
 import zoomPlugin from 'chartjs-plugin-zoom';
 
@@ -29,6 +34,7 @@ const props = defineProps({
 const chartCanvas = ref(null);
 let chartInstance = null;
 const zoomLevel = ref(1);
+const chartMode = ref('pan'); // 'pan' or 'zoom'
 
 function zoomIn() {
   if (chartInstance) {
@@ -61,6 +67,15 @@ function handleZoomSlider(event) {
   }
 }
 
+function setMode(mode) {
+  chartMode.value = mode;
+  if (chartInstance) {
+    chartInstance.options.plugins.zoom.pan.enabled = mode === 'pan';
+    chartInstance.options.plugins.zoom.zoom.drag.enabled = mode === 'zoom';
+    chartInstance.update();
+  }
+}
+
 onMounted(() => {
   if (chartCanvas.value) {
     const ctx = chartCanvas.value.getContext('2d');
@@ -75,11 +90,32 @@ onMounted(() => {
             text: props.title,
             font: { size: 16 }
           },
-          zoom: { // 缩放插件配置
-            pan: { enabled: true, mode: 'xy' },
+          // 1. 添加内置的数据抽取插件配置
+          decimation: {
+            enabled: true,
+            algorithm: 'lttb', // 使用高效的 LTTB 算法
+            samples: 200,      // 抽样点数，可以根据需要调整
+            threshold: 500,    // 数据点超过 500 个时开始抽样
+          },
+          zoom: {
+            pan: {
+              enabled: true, // 默认启用平移
+              mode: 'xy',
+            },
             zoom: {
-              wheel: { enabled: true },
-              pinch: { enabled: true },
+              // 核心改动在这里
+              drag: {
+                enabled: false, // 默认禁用拖拽缩放
+                borderColor: 'rgba(0, 123, 255, 0.5)',
+                borderWidth: 2,
+                backgroundColor: 'rgba(0, 123, 255, 0.1)'
+              },
+              wheel: {
+                enabled: false, // 禁用滚轮实时缩放，避免冲突和卡顿
+              },
+              pinch: {
+                enabled: true // 保留触摸板的双指缩放
+              },
               mode: 'xy',
             }
           }
@@ -151,5 +187,17 @@ watch(() => props.chartData, (newData) => {
 .zoom-slider {
   width: 150px;
   margin-left: 15px;
+}
+
+/* 新增样式：活动模式的按钮高亮 */
+.active-mode {
+  background-color: #cce5ff; /* 一个淡蓝色背景来表示激活状态 */
+  border-color: #007bff;
+}
+
+/* 新增样式：分隔符 */
+.separator {
+  margin: 0 10px;
+  color: #ccc;
 }
 </style>
