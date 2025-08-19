@@ -55,6 +55,17 @@ onMounted(() => {
 
 watch(() => props.chartData, (newData) => {
   if (newData && chartInstance) {
+    // 设置点的样式
+    newData.datasets.forEach(dataset => {
+      if (dataset.label.includes('Side A') || dataset.label.includes('Side B')) {
+        dataset.pointRadius = 1; // Pin点设置较小的半径
+        dataset.pointHoverRadius = 3; // 鼠标悬停时稍大
+      } else {
+        dataset.pointRadius = 0; // 治具轮廓线上的点可以不显示
+        dataset.borderWidth = 2; // 治具轮廓线宽
+      }
+    });
+
     chartInstance.data = newData;
     // 更新标题
     if (chartInstance.options.plugins.title) {

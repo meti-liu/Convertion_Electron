@@ -20,8 +20,8 @@
 import { ref } from 'vue';
 import JigChart from './components/JigChart.vue';
 
-const chartDataTop = ref(null);
-const chartDataBot = ref(null);
+const chartDataTop = ref({ datasets: [] }); // 初始化为空结构
+const chartDataBot = ref({ datasets: [] }); // 初始化为空结构
 
 const loadAndProcessFiles = async () => {
   const result = await window.electronAPI.processFiles();

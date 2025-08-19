@@ -8,8 +8,8 @@ function createWindow() {
     height: 800,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
-      contextIsolation: true,
-      nodeIntegration: false,
+      contextIsolation: true, // 必须为 true
+      nodeIntegration: false, // 推荐为 false 以提高安全性
     },
   });
 
@@ -21,7 +21,7 @@ app.whenReady().then(createWindow);
 
 // ... (app lifecycle events)
 
-ipcMain.handle('run-processing', async () => {
+ipcMain.handle('select-files', async () => {
   // 1. Open file dialog to get file paths
   const { canceled, filePaths } = await dialog.showOpenDialog({
     properties: ['openFile', 'multiSelections'],
