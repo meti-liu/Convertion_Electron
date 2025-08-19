@@ -1,0 +1,25 @@
+{
+  "name": "electron-jig-viewer",
+  "version": "1.0.0",
+  "description": "An Electron application to visualize JIG data.",
+  "main": "background.js",
+  "scripts": {
+    "start": "npm run dev",
+    "dev": "concurrently \"vite\" \"electron .\"",
+    "build": "vite build"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "chart.js": "^4.4.3",
+    "vue": "^3.4.0",
+    "vue-chartjs": "^5.3.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^6.0.1",
+    "concurrently": "^9.2.0",
+    "electron": "^28.0.0",
+    "vite": "^7.1.2"
+  }
+}
