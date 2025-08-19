@@ -36,7 +36,7 @@ ipcMain.handle('run-processing', async () => {
 
   // 2. Find the python script
   // Assumes the script is in the parent directory under 'Convertion'
-  const scriptPath = path.join(__dirname, '..', '..', 'Convertion-py', 'convert2copy.py');
+  const scriptPath = path.join(__dirname, 'json_script.py');
   
   // 3. Separate files and prepare arguments
   const rutFiles = filePaths.filter(p => p.toLowerCase().endsWith('.rut'));
