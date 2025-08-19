@@ -121,7 +121,7 @@ def main(rut_files, adr_file):
              coordinates = [(-x, y) for x, y in coordinates]
 
         processed_coords = process_jig_unit(coordinates, x_offset, y_offset)
-        all_data['rut_data'].append(processed_coords)
+        all_data['rut_data'].append({'filename': os.path.basename(file_path), 'coords': processed_coords})
 
     if adr_file:
         pin_list = read_adr_file(adr_file)
