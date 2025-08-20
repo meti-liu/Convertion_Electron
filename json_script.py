@@ -4,22 +4,38 @@ import json
 import sys
 
 def process_jig_unit(raw_coords, x_offset, y_offset, jig_name=""):
+    """
+    (最终版) 精确处理治具单元，实现“切角”逻辑以消除“小三角”。
+    """
+    # 1. 安全检查：至少需要4个点才能定义两条线段
     if not raw_coords or len(raw_coords) < 4:
+        # 如果点数不足，则退回简单的闭合逻辑
+        if raw_coords and len(raw_coords) >= 2:
+            processed = raw_coords[:]
+            if processed[-1] != processed[0]:
+                processed.append(processed[0])
+            return [(x - x_offset, y - y_offset) for x, y in processed]
         return []
 
     processed_coords = []
     try:
+        # 2. 尝试计算起始线段和结束线段的交点
         intersection = calculate_intersection_point(
             raw_coords[0], raw_coords[1],
             raw_coords[-2], raw_coords[-1]
         )
-        processed_coords = raw_coords[2:-1]
-        processed_coords.append(intersection)
-        processed_coords.append(processed_coords[0])
-    except ValueError:
-        processed_coords = raw_coords[:]
-        processed_coords.append(raw_coords[0])
 
+        # 3. 核心逻辑：重组坐标列表以实现“切角”
+        # 新的路径是 [交点, P2, P3, ..., Pn-1, 交点]
+        processed_coords = [intersection] + raw_coords[1:-1] + [intersection]
+
+    except ValueError:
+        # 4. 如果交点计算失败（例如，线段平行），则退回简单的闭合逻辑
+        processed_coords = raw_coords[:]
+        if processed_coords[-1] != processed_coords[0]:
+            processed_coords.append(processed_coords[0])
+
+    # 5. 应用偏移量，返回最终坐标
     return [(x - x_offset, y - y_offset) for x, y in processed_coords]
 
 def read_rut_file_for_offset(file_path):
