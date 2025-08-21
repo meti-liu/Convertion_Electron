@@ -1,0 +1,17 @@
+==============================
+[pcs1]
+<< BLOCK JUDGE (B) >>
+ O
+<< BLOCK DIVXY [1,1] >>
+[pcs1]
+<< OPEN FAIL >>
+   7       - 8       >100kohm
+   9       - 10      >100kohm
+OPEN - FAIL OVER
+<< SILVER FAIL >>
+    1:-F4    ,S3    +F6    ,S5    
+               [contact no check]
+    2:-F16   ,S15   +F18   ,S17   
+               [contact no check]
+SILVER - FAIL OVER
+DATE: 01-JUL-2025 18:50

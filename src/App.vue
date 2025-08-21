@@ -1,13 +1,34 @@
 <!-- src/App.vue -->
 <template>
   <div id="app-container">
+    <!-- Original Sidebar for Loading Files -->
     <div class="sidebar">
       <h1 class="title">Jig Viewer</h1>
       <button @click="loadAndProcessFiles" class="load-button">Load Files</button>
     </div>
+
+    <!-- Main Content Area -->
     <div class="main-content">
-      <JigChart :chartData="chartDataTop" title="Top Jig (Side A)" />
-      <JigChart :chartData="chartDataBot" title="Bottom Jig (Side B)" />
+      <!-- Jig Charts -->
+      <div class="charts-area">
+        <JigChart
+          :chartData="chartDataTop"
+          :highlightedPinId="highlightedPinId"
+          title="Top Jig (Side A)"
+        />
+        <JigChart
+          :chartData="chartDataBot"
+          :highlightedPinId="highlightedPinId"
+          title="Bottom Jig (Side B)"
+        />
+      </div>
+
+      <!-- New Controls Sidebar -->
+      <div class="controls-sidebar">
+        <ControlPanel>
+          <PinInspector @highlight-pin="handleHighlightPin" />
+        </ControlPanel>
+      </div>
     </div>
   </div>
 </template>
@@ -15,24 +36,31 @@
 <script setup>
 import { ref } from 'vue';
 import JigChart from './components/JigChart_svg.vue';
+import ControlPanel from './components/ControlPanel.vue';
+import PinInspector from './components/PinInspector.vue';
 
-const chartDataTop = ref({ datasets: [] }); // 初始化为空结构
-const chartDataBot = ref({ datasets: [] }); // 初始化为空结构
+const chartDataTop = ref({ datasets: [] });
+const chartDataBot = ref({ datasets: [] });
+const highlightedPinId = ref(null);
+
+const handleHighlightPin = (pinId) => {
+  console.log('Highlighting pin in App.vue:', pinId);
+  highlightedPinId.value = pinId;
+};
 
 const loadAndProcessFiles = async () => {
   const result = await window.electronAPI.processFiles();
   if (result && result.rut_data) {
-    // 根据文件名精确分离 TOP 和 BOT 数据
-    const topRutData = result.rut_data.filter(data => 
+    const topRutData = result.rut_data.filter(data =>
         data.filename.toUpperCase().includes('TOP')
     );
-    const botRutData = result.rut_data.filter(data => 
+    const botRutData = result.rut_data.filter(data =>
         data.filename.toUpperCase().includes('BOT')
     );
 
     // --- Top Jig Chart Data (Side A) ---
     const topDatasets = topRutData.map((data, index) => ({
-      label: data.filename, // 使用文件名作为标签
+      label: data.filename,
       data: data.coords.map(c => ({ x: c[0], y: c[1] })),
       borderColor: ['red', 'blue', 'green'][index % 3],
       borderWidth: 2,
@@ -45,8 +73,8 @@ const loadAndProcessFiles = async () => {
     if (result.adr_data?.side_a) {
       topDatasets.push({
         label: 'ADR Pins - Side A',
-        data: result.adr_data.side_a,
-        backgroundColor: 'black',
+        data: result.adr_data.side_a.map(pin => ({ ...pin, id: pin.no })), // Ensure pins have an ID
+        backgroundColor: 'green',
         pointRadius: 1,
         type: 'scatter',
       });
@@ -55,7 +83,7 @@ const loadAndProcessFiles = async () => {
 
     // --- Bottom Jig Chart Data (Side B) ---
     const botDatasets = botRutData.map((data, index) => ({
-      label: data.filename, // 使用文件名作为标签
+      label: data.filename,
       data: data.coords.map(c => ({ x: c[0], y: c[1] })),
       borderColor: ['red', 'blue', 'green'][index % 3],
       borderWidth: 2,
@@ -68,8 +96,8 @@ const loadAndProcessFiles = async () => {
     if (result.adr_data?.side_b) {
       botDatasets.push({
         label: 'ADR Pins - Side B',
-        data: result.adr_data.side_b,
-        backgroundColor: 'grey',
+        data: result.adr_data.side_b.map(pin => ({ ...pin, id: pin.no })), // Ensure pins have an ID
+        backgroundColor: 'green',
         pointRadius: 1,
         type: 'scatter',
       });
@@ -82,4 +110,31 @@ const loadAndProcessFiles = async () => {
 <style>
 /* Import the new global stylesheet */
 @import './assets/styles.css';
+
+/* Add styles for the new layout */
+#app-container {
+  display: flex;
+  height: 100vh;
+}
+
+.main-content {
+  flex-grow: 1;
+  display: flex;
+  gap: 16px;
+  padding: 16px;
+}
+
+.charts-area {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column; /* Stack charts vertically */
+  gap: 16px;
+}
+
+.controls-sidebar {
+  width: 320px; /* Adjust width as needed */
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+}
 </style>

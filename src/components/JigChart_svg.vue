@@ -30,8 +30,10 @@
           :key="`pin-${index}`"
           :cx="pin.x"
           :cy="pin.y"
-          :r="pinRadius"
+          :r="pin.radius"
           :fill="pin.color"
+          :stroke="pin.stroke"
+          :stroke-width="pin.strokeWidth"
         />
       </g>
       <!-- Drag-to-zoom rectangle -->
@@ -91,6 +93,7 @@ import { ref, computed, watch } from 'vue';
 const props = defineProps({
   chartData: Object,
   title: String,
+  highlightedPinId: [String, Number], // Accept highlightedPinId prop
 });
 
 // --- Refs and State ---
@@ -130,9 +133,18 @@ const rutDatasets = computed(() => {
 
 const adrPins = computed(() => {
     const pins = [];
+    const highlightedId = props.highlightedPinId?.toString();
+
     props.chartData?.datasets?.filter(d => d.type === 'scatter').forEach(dataset => {
         dataset.data.forEach(pin => {
-            pins.push({ ...pin, color: dataset.backgroundColor });
+            const isHighlighted = pin.id?.toString() === highlightedId;
+            pins.push({
+                ...pin,
+                color: isHighlighted ? 'red' : dataset.backgroundColor,
+                radius: isHighlighted ? pinRadius.value * 4 : pinRadius.value,
+                stroke: isHighlighted ? 'darkred' : 'none',
+                strokeWidth: isHighlighted ? pinRadius.value / 2 : 0,
+            });
         });
     });
     return pins;

@@ -1,5 +1,6 @@
 const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const path = require('path');
+const fs = require('fs').promises; // Use promises-based fs
 const { spawn } = require('child_process');
 
 function createWindow() {
@@ -79,4 +80,35 @@ ipcMain.handle('process-files', async () => {
       }
     });
   });
+});
+
+// Handle request to read CSV files
+ipcMain.handle('read-csv-files', async () => {
+  const { canceled, filePaths } = await dialog.showOpenDialog({
+    properties: ['openFile', 'multiSelections'],
+    filters: [
+      { name: 'CSV Files', extensions: ['csv', 'txt'] } // Allow CSV and TXT files
+    ],
+  });
+
+  if (canceled || filePaths.length === 0) {
+    return null;
+  }
+
+  try {
+    const files = await Promise.all(
+      filePaths.map(async (filePath) => {
+        const content = await fs.readFile(filePath, 'utf-8');
+        return {
+          name: path.basename(filePath),
+          content: content,
+        };
+      })
+    );
+    return files;
+  } catch (error) {
+    console.error('Error reading CSV files:', error);
+    dialog.showErrorBox('File Read Error', 'An error occurred while reading the selected files.');
+    return null;
+  }
 });

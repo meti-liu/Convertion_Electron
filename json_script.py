@@ -141,8 +141,8 @@ def main(rut_files, adr_file):
 
     if adr_file:
         pin_list = read_adr_file(adr_file)
-        pin_list_a = [{'x': pin.x, 'y': pin.y} for pin in pin_list if pin.side == "A"]
-        pin_list_b = [{'x': pin.x, 'y': pin.y} for pin in pin_list if pin.side == "B"]
+        pin_list_a = [{'no': pin.no, 'x': pin.x, 'y': pin.y} for pin in pin_list if pin.side == "A"]
+        pin_list_b = [{'no': pin.no, 'x': pin.x, 'y': pin.y} for pin in pin_list if pin.side == "B"]
         all_data['adr_data'] = {'side_a': pin_list_a, 'side_b': pin_list_b}
 
     print(json.dumps(all_data))
