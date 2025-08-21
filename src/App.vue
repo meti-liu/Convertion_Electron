@@ -6,8 +6,15 @@
       <button @click="loadAndProcessFiles" class="load-button">Load Files</button>
     </div>
     <div class="main-content">
-      <JigChart :chartData="chartDataTop" title="Top Jig (Side A)" />
-      <JigChart :chartData="chartDataBot" title="Bottom Jig (Side B)" />
+      <div class="charts-wrapper">
+        <JigChart :chartData="chartDataTop" title="Top Jig (Side A)" :highlightedPinId="highlightedPinId" />
+        <JigChart :chartData="chartDataBot" title="Bottom Jig (Side B)" :highlightedPinId="highlightedPinId" />
+      </div>
+      <div class="controls-container">
+        <ControlPanel>
+          <PinInspector @highlight-pin="handleHighlightPin" />
+        </ControlPanel>
+      </div>
     </div>
   </div>
 </template>
@@ -15,9 +22,12 @@
 <script setup>
 import { ref } from 'vue';
 import JigChart from './components/JigChart_svg.vue';
+import ControlPanel from './components/ControlPanel.vue';
+import PinInspector from './components/PinInspector.vue';
 
 const chartDataTop = ref({ datasets: [] }); // 初始化为空结构
 const chartDataBot = ref({ datasets: [] }); // 初始化为空结构
+const highlightedPinId = ref('');
 
 const loadAndProcessFiles = async () => {
   const result = await window.electronAPI.processFiles();
@@ -77,9 +87,34 @@ const loadAndProcessFiles = async () => {
     chartDataBot.value = { datasets: botDatasets };
   }
 };
+
+function handleHighlightPin(pinId) {
+  highlightedPinId.value = pinId;
+}
+
 </script>
 
 <style>
 /* Import the new global stylesheet */
 @import './assets/styles.css';
+
+.main-content {
+  display: flex;
+  flex-grow: 1;
+}
+
+.charts-wrapper {
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+  gap: 10px; /* Add some space between charts */
+}
+
+.controls-container {
+  width: 300px; /* Adjust width as needed */
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+}
+
 </style>
