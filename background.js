@@ -1,6 +1,7 @@
 const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const path = require('path');
 const { spawn } = require('child_process');
+const fs = require('fs');
 
 function createWindow() {
   const win = new BrowserWindow({
@@ -13,7 +14,8 @@ function createWindow() {
     },
   });
 
-  win.loadURL('http://localhost:5173');
+  // win.loadURL('http://localhost:5173');
+  win.loadURL(process.env.VITE_DEV_SERVER_URL || 'http://localhost:5174');
   win.webContents.openDevTools();
 }
 
@@ -79,4 +81,24 @@ ipcMain.handle('process-files', async () => {
       }
     });
   });
+});
+
+// 新增：处理获取Pin点数据文件的请求
+ipcMain.handle('get-pin-data', async () => {
+  const docDir = path.join(__dirname, 'doc');
+  try {
+    const files = await fs.promises.readdir(docDir);
+    const pinFiles = files.filter(file => file.endsWith('.adr') || file.endsWith('.csv'));
+    
+    const fileContents = [];
+    for (const file of pinFiles) {
+      const filePath = path.join(docDir, file);
+      const content = await fs.promises.readFile(filePath, 'utf-8');
+      fileContents.push({ fileName: file, content: content });
+    }
+    return fileContents;
+  } catch (error) {
+    console.error('Error reading pin data directory:', error);
+    return []; // or throw error
+  }
 });

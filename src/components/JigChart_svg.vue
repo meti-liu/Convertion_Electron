@@ -24,16 +24,20 @@
           :stroke-width="strokeWidth"
           fill="none"
         />
-        <!-- Render ADR Pin Points -->
-        <circle
-          v-for="(pin, index) in adrPins"
-          :key="`pin-${index}`"
-          :cx="pin.x"
-          :cy="pin.y"
-          :r="pinRadius"
-          :fill="pin.color"
-        />
+        <!-- Render Pin Points -->
+        <g v-if="pinList && pinList.length > 0">
+          <circle
+            v-for="pin in pinList"
+            :key="pin.no"
+            :cx="pin.x"
+            :cy="pin.y"
+            :r="getPinRadius(pin.no)"
+            :fill="getPinColor(pin.no)"
+            class="pin-point"
+          />
+        </g>
       </g>
+
       <!-- Drag-to-zoom rectangle -->
       <rect
         v-if="isDragging"
@@ -89,8 +93,10 @@
 import { ref, computed, watch } from 'vue';
 
 const props = defineProps({
-  chartData: Object,
-  title: String,
+  jigData: Object,
+  pinList: Array, // Changed from pinLists to pinList
+  highlightedPinId: String,
+  title: String
 });
 
 // --- Refs and State ---
@@ -122,7 +128,7 @@ const viewBox = computed(() => `${dataBounds.value.minX} ${dataBounds.value.minY
 const transform = computed(() => `translate(${translateX.value}, ${translateY.value}) scale(${scale.value})`);
 
 const rutDatasets = computed(() => {
-  return props.chartData?.datasets?.filter(d => d.type === 'line').map(d => ({
+  return props.jigData?.datasets?.filter(d => d.type === 'line').map(d => ({
     ...d,
     path: d.data.map((p, i) => (i === 0 ? 'M' : 'L') + `${p.x} ${p.y}`).join(' '),
   })) || [];
@@ -130,7 +136,7 @@ const rutDatasets = computed(() => {
 
 const adrPins = computed(() => {
     const pins = [];
-    props.chartData?.datasets?.filter(d => d.type === 'scatter').forEach(dataset => {
+    props.jigData?.datasets?.filter(d => d.type === 'scatter').forEach(dataset => {
         dataset.data.forEach(pin => {
             pins.push({ ...pin, color: dataset.backgroundColor });
         });
@@ -142,7 +148,7 @@ const pinRadius = computed(() => 0.25 / Math.sqrt(scale.value));
 const strokeWidth = computed(() => 0.5 / Math.sqrt(scale.value));
 
 // --- Methods ---
-watch(() => props.chartData, (newData) => {
+watch(() => props.jigData, (newData) => {
   if (!newData || !newData.datasets || newData.datasets.length === 0) return;
 
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
@@ -325,6 +331,14 @@ function redo() {
     applyState(nextState);
   }
 }
+
+function getPinColor(pinId) {
+  return props.highlightedPinId === pinId.toString() ? '#ff0000' : 'black'; // 红色高亮
+}
+
+function getPinRadius(pinId) {
+  return props.highlightedPinId === pinId.toString() ? 1.5 : 1; // 高亮的点更大
+}
 </script>
 
 <style scoped>
@@ -400,5 +414,9 @@ function redo() {
   width: 24px;
   height: 24px;
   fill: currentColor;
+}
+
+.pin-point {
+  transition: fill 0.3s, r 0.3s;
 }
 </style>
