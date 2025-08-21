@@ -126,73 +126,28 @@ def read_adr_file(file_path):
     return pin_points
 
 def main(rut_files, adr_file):
-    # This is the data structure that App.vue expects
-    final_data = {
-        "up_jigs": { "datasets": [] },
-        "down_jigs": { "datasets": [] },
-        "pin_lists": { "side_a": [], "side_b": [] }
-    }
-    
-    colors = ['red', 'blue', 'green', 'purple', 'orange', 'brown']
-    up_color_index = 0
-    down_color_index = 0
+    all_data = {'rut_data': [], 'adr_data': {}}
 
     for file_path in rut_files:
-        filename = os.path.basename(file_path)
         x_offset, y_offset = read_rut_file_for_offset(file_path)
         coordinates = extract_coordinates(file_path)
         
-        jig_data = {
-            "label": filename,
-            "borderWidth": 2,
-            "showLine": True,
-            "fill": False,
-            "type": 'line',
-            "pointRadius": 0,
-        }
+        # Assuming file names can distinguish between up and down to apply transformation
+        if "TOP" in os.path.basename(file_path).upper():
+             coordinates = [(-x, y) for x, y in coordinates]
 
-        if "TOP" in filename.upper():
-            coordinates = [(-x, y) for x, y in coordinates]
-            processed_coords = process_jig_unit(coordinates, x_offset, y_offset, filename)
-            jig_data["data"] = [{'x': c[0], 'y': c[1]} for c in processed_coords]
-            jig_data["borderColor"] = colors[up_color_index % len(colors)]
-            final_data["up_jigs"]["datasets"].append(jig_data)
-            up_color_index += 1
-        elif "BOT" in filename.upper():
-            processed_coords = process_jig_unit(coordinates, x_offset, y_offset, filename)
-            jig_data["data"] = [{'x': c[0], 'y': c[1]} for c in processed_coords]
-            jig_data["borderColor"] = colors[down_color_index % len(colors)]
-            final_data["down_jigs"]["datasets"].append(jig_data)
-            down_color_index += 1
+        processed_coords = process_jig_unit(coordinates, x_offset, y_offset)
+        all_data['rut_data'].append({'filename': os.path.basename(file_path), 'coords': processed_coords})
 
     if adr_file:
         pin_list = read_adr_file(adr_file)
-        # Include 'no' for highlighting functionality
-        pin_list_a = [{'no': pin.no, 'x': pin.x, 'y': pin.y} for pin in pin_list if pin.side == "A"]
-        pin_list_b = [{'no': pin.no, 'x': pin.x, 'y': pin.y} for pin in pin_list if pin.side == "B"]
-        final_data['pin_lists'] = {'side_a': pin_list_a, 'side_b': pin_list_b}
+        pin_list_a = [{'x': pin.x, 'y': pin.y} for pin in pin_list if pin.side == "A"]
+        pin_list_b = [{'x': pin.x, 'y': pin.y} for pin in pin_list if pin.side == "B"]
+        all_data['adr_data'] = {'side_a': pin_list_a, 'side_b': pin_list_b}
 
-    print(json.dumps(final_data, indent=2))
+    print(json.dumps(all_data))
 
 if __name__ == "__main__":
-    # Ensure there are files to process
-    if len(sys.argv) > 1:
-        rut_files = [arg for arg in sys.argv[1:] if arg.lower().endswith('.rut')]
-        adr_file_list = [arg for arg in sys.argv[1:] if arg.lower().endswith('.adr')]
-        
-        if rut_files and adr_file_list:
-            main(rut_files, adr_file_list[0])
-        else:
-            # Print an empty structure if files are missing, to avoid crashing the frontend
-            print(json.dumps({
-                "up_jigs": { "datasets": [] },
-                "down_jigs": { "datasets": [] },
-                "pin_lists": { "side_a": [], "side_b": [] }
-            }))
-    else:
-        # Handle case where no files are passed
-        print(json.dumps({
-            "up_jigs": { "datasets": [] },
-            "down_jigs": { "datasets": [] },
-            "pin_lists": { "side_a": [], "side_b": [] }
-        }))
+    rut_files = sys.argv[1:-1]
+    adr_file = sys.argv[-1]
+    main(rut_files, adr_file)
