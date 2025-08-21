@@ -14,8 +14,6 @@
   "dependencies": {
     "chart.js": "^4.4.3",
     "chartjs-plugin-downsample": "^1.1.0",
-    "cross-env": "^10.0.0",
-    "electron-squirrel-startup": "^1.0.1",
     "vue": "^3.4.0",
     "vue-chartjs": "^5.3.1"
   },
