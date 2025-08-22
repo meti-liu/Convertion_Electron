@@ -14,14 +14,14 @@
         <JigChart
           :chartData="chartDataTop"
           :highlightedPinIds="highlightedPinIds"
-          :selectedPinId="selectedPinId"
+          :selectedPinGroup="selectedPinGroup"
           :pinToZoom="topPinToZoom" 
           title="Top Jig (Side A)"
         />
         <JigChart
           :chartData="chartDataBot"
           :highlightedPinIds="highlightedPinIds"
-          :selectedPinId="selectedPinId"
+          :selectedPinGroup="selectedPinGroup"
           :pinToZoom="botPinToZoom"
           title="Bottom Jig (Side B)"
         />
@@ -33,7 +33,7 @@
           <PinInspector 
             @highlight-pins="handleHighlightPins"
             @select-pin="handleSelectPin"
-            :failedPins="failedPins"
+            :failures="failures"
           />
         </ControlPanel>
       </div>
@@ -42,38 +42,55 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
-import JigChart from './components/JigChart_svg.vue';
+import { ref, onMounted } from 'vue';
+import JigChart_svg from './components/JigChart_svg.vue';
 import ControlPanel from './components/ControlPanel.vue';
 import PinInspector from './components/PinInspector.vue';
 
 const chartDataTop = ref({ datasets: [] });
 const chartDataBot = ref({ datasets: [] });
 const highlightedPinIds = ref([]);
-const selectedPinId = ref(null);
+const selectedPinGroup = ref([]); // To hold the selected pin or pair
 const topPinToZoom = ref(null); // Separate zoom state for Top Jig
 const botPinToZoom = ref(null); // Separate zoom state for Bottom Jig
-const failedPins = ref([]); // To store failed pin IDs from the backend
+const failures = ref([]); // To store failure data (pins and type) from the backend
 
-function handleHighlightPins(pinIds) {
-  highlightedPinIds.value = pinIds;
+function handleHighlightPins(pins) {
+  if (Array.isArray(pins) && pins.every(p => Array.isArray(p))) {
+    // It's an array of arrays (pin pairs or single pins in arrays)
+    highlightedPinIds.value = pins.flat();
+  } else {
+    // It's a flat array of pin IDs (backward compatibility)
+    highlightedPinIds.value = pins;
+  }
 }
 
-function handleSelectPin(pinId) {
-  selectedPinId.value = pinId;
+function handleSelectPin(pin) { // pin can be a single ID or an array for a pair
+  let pinToZoomId = null;
+
+  if (Array.isArray(pin) && pin.length > 0) {
+    selectedPinGroup.value = pin;
+    pinToZoomId = pin[0];
+  } else if (pin && !Array.isArray(pin)) {
+    selectedPinGroup.value = [pin];
+    pinToZoomId = pin;
+  } else {
+    selectedPinGroup.value = [];
+    pinToZoomId = null;
+  }
   
   // Reset both zoom states
   topPinToZoom.value = null;
   botPinToZoom.value = null;
 
-  if (pinId) {
+  if (pinToZoomId) {
     let foundPin = null;
     let foundIn = null; // 'top' or 'bot'
 
     // Check Top Jig datasets
     for (const dataset of chartDataTop.value.datasets) {
       if (dataset.type === 'scatter') {
-        foundPin = dataset.data.find(p => p.id === pinId);
+        foundPin = dataset.data.find(p => p.id === pinToZoomId);
         if (foundPin) {
           foundIn = 'top';
           break;
@@ -85,7 +102,7 @@ function handleSelectPin(pinId) {
     if (!foundPin) {
       for (const dataset of chartDataBot.value.datasets) {
         if (dataset.type === 'scatter') {
-          foundPin = dataset.data.find(p => p.id === pinId);
+          foundPin = dataset.data.find(p => p.id === pinToZoomId);
           if (foundPin) {
             foundIn = 'bot';
             break;
@@ -106,10 +123,10 @@ function handleSelectPin(pinId) {
 async function loadAndProcessFiles() {
   const result = await window.electronAPI.processFiles();
   if (result && result.rut_data) {
-    const { rut_data, adr_data, failedPins: backendFailedPins } = result;
+    const { rut_data, adr_data, failures: backendFailures } = result;
 
-    // Store the failed pins
-    failedPins.value = backendFailedPins || [];
+    // Store the failures data
+    failures.value = backendFailures || [];
 
     // --- Data Processing (remains largely the same) ---
     const topRutData = result.rut_data.filter(data =>
@@ -165,10 +182,23 @@ async function loadAndProcessFiles() {
     }
     chartDataBot.value = { datasets: botDatasets };
 
-    // Automatically highlight failed pins on load
-    handleHighlightPins(failedPins.value);
+    // Automatically highlight all failed pins on load
+    const allFailedPins = failures.value.map(failure => failure.pins).flat();
+    handleHighlightPins(allFailedPins);
   }
 }
+
+const updateSelectedPins = (newSelection) => {
+  selectedPins.value = newSelection;
+};
+
+
+onMounted(() => {
+  window.electronAPI.onPing((event, message) => {
+    console.log(message); // "pong"
+  });
+  loadAndProcessFiles();
+});
 </script>
 
 <style>

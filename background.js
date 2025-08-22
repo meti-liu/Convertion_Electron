@@ -175,17 +175,22 @@ ipcMain.handle('process-fail-logs', async () => {
     const pair = logPairs[timestamp];
     if (pair.csv && pair.txt) {
       try {
-        // a. Get structured failure data from CSV and update DB
-        const parsedResults = await runFailParser(pair.csv);
-        const failedPins = parsedResults.map(r => r.pin);
-
-        // b. Read the content of the corresponding TXT file
+        // a. Get failure data from both CSV and TXT files
+        const csvResults = await runFailParser(pair.csv);
+        const txtResults = await runFailParser(pair.txt);
+        const allResults = [...csvResults, ...txtResults];
+        
+        // b. Read the content of the corresponding TXT file for display
         const txtContent = await fs.readFile(pair.txt, 'utf-8');
 
-        // c. Add to database
+        // c. Add all failures to the database
         const stmt = db.prepare("INSERT INTO failures (pin_number, error_type, log_file) VALUES (?, ?, ?)");
-        for (const item of parsedResults) {
-          stmt.run(item.pin, item.error_type, path.basename(pair.csv));
+        for (const result of allResults) {
+          const error_type = result.type; // Use 'type' from new structure
+          const logFile = path.basename(pair.txt); // Associate all with the TXT log for simplicity
+          for (const pin of result.pins) {
+            stmt.run(pin, error_type, logFile);
+          }
         }
         stmt.finalize();
 
@@ -194,7 +199,7 @@ ipcMain.handle('process-fail-logs', async () => {
           id: timestamp,
           name: path.basename(pair.txt),
           content: txtContent,
-          failedPins: failedPins,
+          failures: allResults, // Pass the full failure data
         });
 
       } catch (error) {
@@ -216,7 +221,6 @@ function runFailParser(filePath) {
 
     pythonProcess.stdout.on('data', (data) => {
       stdout += data.toString();
-      console.log(`Python stdout: ${data}`);
     });
 
     pythonProcess.stderr.on('data', (data) => {
@@ -227,9 +231,16 @@ function runFailParser(filePath) {
     pythonProcess.on('close', (code) => {
       if (code === 0) {
         try {
-          resolve(JSON.parse(stdout));
+          // Trim stdout to remove leading/trailing whitespace that can break JSON.parse
+          const trimmedStdout = stdout.trim();
+          if (!trimmedStdout) {
+            // If stdout is empty after trimming, resolve with an empty array
+            return resolve([]);
+          }
+          resolve(JSON.parse(trimmedStdout));
         } catch (e) {
-          reject(new Error('Failed to parse Python script output.'));
+          console.error("Failed to parse Python script output:", stdout); // Log the problematic output
+          reject(new Error(`Failed to parse Python script output. Raw output: ${stdout}`));
         }
       } else {
         reject(new Error(`Python script exited with code ${code}: ${stderr}`));
