@@ -13,12 +13,12 @@
       <div class="charts-area">
         <JigChart
           :chartData="chartDataTop"
-          :highlightedPinId="highlightedPinId"
+          :highlightedPinIds="highlightedPinIds"
           title="Top Jig (Side A)"
         />
         <JigChart
           :chartData="chartDataBot"
-          :highlightedPinId="highlightedPinId"
+          :highlightedPinIds="highlightedPinIds"
           title="Bottom Jig (Side B)"
         />
       </div>
@@ -26,7 +26,7 @@
       <!-- New Controls Sidebar -->
       <div class="controls-sidebar">
         <ControlPanel>
-          <PinInspector @highlight-pin="handleHighlightPin" />
+          <PinInspector @highlight-pins="handleHighlightPins" />
         </ControlPanel>
       </div>
     </div>
@@ -41,16 +41,18 @@ import PinInspector from './components/PinInspector.vue';
 
 const chartDataTop = ref({ datasets: [] });
 const chartDataBot = ref({ datasets: [] });
-const highlightedPinId = ref(null);
+const highlightedPinIds = ref([]);
 
-const handleHighlightPin = (pinId) => {
-  console.log('Highlighting pin in App.vue:', pinId);
-  highlightedPinId.value = pinId;
-};
+function handleHighlightPins(pinIds) {
+  highlightedPinIds.value = pinIds;
+}
 
-const loadAndProcessFiles = async () => {
+async function loadAndProcessFiles() {
   const result = await window.electronAPI.processFiles();
   if (result && result.rut_data) {
+    const { rut_data, adr_data } = result;
+
+    // Find the max pin number to determine the scale of the chart
     const topRutData = result.rut_data.filter(data =>
         data.filename.toUpperCase().includes('TOP')
     );

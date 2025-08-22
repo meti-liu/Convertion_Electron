@@ -1,20 +1,20 @@
 <!-- src/components/PinInspector.vue -->
 <template>
   <div class="pin-inspector">
-    <!-- CSV Viewer -->
+    <!-- Fail Log Viewer -->
     <div class="csv-viewer">
-      <h4>CSV Data Viewer</h4>
+      <h4>Fail Log Viewer</h4>
       <div class="csv-controls">
-        <button @click="loadCsv" class="control-button">Load CSV</button>
-        <span v-if="csvFiles.length > 0" class="file-info">
-          {{ currentCsvFile.name }} ({{ currentPage }} / {{ csvFiles.length }})
+        <button @click="processFails" class="control-button">Process Fail Logs</button>
+        <span v-if="logFiles.length > 0" class="file-info">
+          {{ currentLogFile.name }} ({{ currentPage }} / {{ logFiles.length }})
         </span>
       </div>
-      <div v-if="csvFiles.length > 0" class="pagination">
+      <div v-if="logFiles.length > 0" class="pagination">
         <button @click="prevPage" :disabled="currentPage === 1">Previous</button>
-        <button @click="nextPage" :disabled="currentPage === csvFiles.length">Next</button>
+        <button @click="nextPage" :disabled="currentPage === logFiles.length">Next</button>
       </div>
-      <textarea v-model="csvContent" readonly class="csv-content-area"></textarea>
+      <textarea v-model="logContent" readonly class="csv-content-area"></textarea>
     </div>
 
     <!-- Pin Highlighting Controls -->
@@ -29,50 +29,54 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, watch } from 'vue';
 
-const emit = defineEmits(['highlight-pin']);
+const emit = defineEmits(['highlight-pin', 'highlight-pins']);
 
-// --- CSV Viewer State ---
-const csvFiles = ref([]);
+// --- Fail Log Viewer State ---
+const logFiles = ref([]);
 const currentPage = ref(1);
-const csvContent = ref('');
+const logContent = ref('');
 
 // --- Pin Highlighting State ---
 const pinIdToHighlight = ref('');
 
 // --- Computed Properties ---
-const currentCsvFile = computed(() => {
-  return csvFiles.value[currentPage.value - 1] || {};
+const currentLogFile = computed(() => {
+  return logFiles.value[currentPage.value - 1] || {};
+});
+
+// --- Watchers ---
+watch(currentPage, () => {
+  updateLogContentAndHighlight();
 });
 
 // --- Methods ---
-const loadCsv = async () => {
-  const files = await window.electronAPI.readCsvFiles();
+const processFails = async () => {
+  const files = await window.electronAPI.processFailLogs();
   if (files && files.length > 0) {
-    csvFiles.value = files;
+    logFiles.value = files;
     currentPage.value = 1;
-    updateCsvContent();
+    updateLogContentAndHighlight();
   }
 };
 
-const updateCsvContent = () => {
-  if (currentCsvFile.value) {
-    csvContent.value = currentCsvFile.value.content;
+const updateLogContentAndHighlight = () => {
+  if (currentLogFile.value) {
+    logContent.value = currentLogFile.value.content;
+    emit('highlight-pins', currentLogFile.value.failedPins || []);
   }
 };
 
 const prevPage = () => {
   if (currentPage.value > 1) {
     currentPage.value--;
-    updateCsvContent();
   }
 };
 
 const nextPage = () => {
-  if (currentPage.value < csvFiles.value.length) {
+  if (currentPage.value < logFiles.value.length) {
     currentPage.value++;
-    updateCsvContent();
   }
 };
 
@@ -81,11 +85,6 @@ const highlightPin = () => {
     emit('highlight-pin', pinIdToHighlight.value.trim());
   }
 };
-
-// Load CSV on component mount for demonstration if needed
-onMounted(() => {
-  // You could auto-load CSVs here if desired
-});
 </script>
 
 <style scoped>

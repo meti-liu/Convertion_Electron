@@ -93,7 +93,10 @@ import { ref, computed, watch } from 'vue';
 const props = defineProps({
   chartData: Object,
   title: String,
-  highlightedPinId: [String, Number], // Accept highlightedPinId prop
+  highlightedPinIds: {
+    type: Array,
+    default: () => []
+  },
 });
 
 // --- Refs and State ---
@@ -133,11 +136,9 @@ const rutDatasets = computed(() => {
 
 const adrPins = computed(() => {
     const pins = [];
-    const highlightedId = props.highlightedPinId?.toString();
-
     props.chartData?.datasets?.filter(d => d.type === 'scatter').forEach(dataset => {
         dataset.data.forEach(pin => {
-            const isHighlighted = pin.id?.toString() === highlightedId;
+            const isHighlighted = props.highlightedPinIds.includes(pin.id);
             pins.push({
                 ...pin,
                 color: isHighlighted ? 'red' : dataset.backgroundColor,
