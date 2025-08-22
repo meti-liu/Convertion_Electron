@@ -167,7 +167,7 @@ const adrPins = computed(() => {
             const isSelected = props.selectedPinId === pin.id;
             pins.push({
                 ...pin,
-                color: isSelected ? 'blue' : (isHighlighted ? 'red' : dataset.backgroundColor),
+                color: isSelected ? 'white' : (isHighlighted ? 'red' : dataset.backgroundColor),
                 radius: isHighlighted || isSelected ? pinRadius.value * 4 : pinRadius.value,
                 stroke: isHighlighted || isSelected ? 'darkred' : 'none',
                 strokeWidth: isHighlighted || isSelected ? pinRadius.value / 2 : 0,
@@ -425,8 +425,8 @@ function updateZoomSlider() {
   height: 100%;
   display: flex;
   flex-direction: column;
-  background-color: #fff;
-  border: 1px solid #e0e0e0;
+  background-color: #2c2c2c; /* Changed to dark mode */
+  border: 1px solid #444; /* Changed to dark mode */
 }
 
 .chart-svg {
@@ -448,23 +448,25 @@ function updateZoomSlider() {
   align-items: center;
   justify-content: center;
   padding: 8px;
-  background-color: #f5f5f5;
-  border-top: 1px solid #e0e0e0;
+  background-color: #333; /* Changed to dark mode */
+  border-top: 1px solid #555; /* Changed to dark mode */
   flex-shrink: 0;
 }
 
 .zoom-controls .title {
     font-weight: bold;
     margin-right: 10px;
+    color: #fff; /* Changed to dark mode */
 }
 
 .zoom-controls button {
   margin: 0 5px;
   padding: 5px 10px;
-  border: 1px solid #ccc;
+  border: 1px solid #666; /* Changed to dark mode */
   border-radius: 4px;
   cursor: pointer;
-  background-color: #fff;
+  background-color: #444; /* Changed to dark mode */
+  color: #fff; /* Changed to dark mode */
 }
 
 .zoom-controls button:disabled {
@@ -473,13 +475,13 @@ function updateZoomSlider() {
 }
 
 .zoom-controls .active-mode {
-  background-color: #cce5ff;
-  border-color: #007bff;
+  background-color: #555; /* Changed to dark mode */
+  border-color: #00aaff; /* Changed to dark mode */
 }
 
 .zoom-controls .separator {
   margin: 0 10px;
-  color: #ccc;
+  color: #666; /* Changed to dark mode */
 }
 
 .zoom-slider {

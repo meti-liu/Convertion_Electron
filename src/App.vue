@@ -123,7 +123,7 @@ async function loadAndProcessFiles() {
     const topDatasets = topRutData.map((data, index) => ({
       label: data.filename,
       data: data.coords.map(c => ({ x: c[0], y: c[1] })),
-      borderColor: ['red', 'blue', 'green'][index % 3],
+      borderColor: ['#FF5733', '#FFD700', '#00FFFF'][index % 3], // Brighter colors
       borderWidth: 2,
       showLine: true,
       fill: false,
@@ -135,7 +135,7 @@ async function loadAndProcessFiles() {
       topDatasets.push({
         label: 'ADR Pins - Side A',
         data: result.adr_data.side_a.map(pin => ({ ...pin, id: pin.no })),
-        backgroundColor: 'green',
+        backgroundColor: '#00FF00', // Changed to bright green
         pointRadius: 1,
         type: 'scatter',
       });
@@ -146,7 +146,7 @@ async function loadAndProcessFiles() {
     const botDatasets = botRutData.map((data, index) => ({
       label: data.filename,
       data: data.coords.map(c => ({ x: c[0], y: c[1] })),
-      borderColor: ['red', 'blue', 'green'][index % 3],
+      borderColor: ['#FF5733', '#FFD700', '#00FFFF'][index % 3], // Brighter colors
       borderWidth: 2,
       showLine: true,
       fill: false,
@@ -158,7 +158,7 @@ async function loadAndProcessFiles() {
       botDatasets.push({
         label: 'ADR Pins - Side B',
         data: result.adr_data.side_b.map(pin => ({ ...pin, id: pin.no })),
-        backgroundColor: 'green',
+        backgroundColor: '#00FF00', // Changed to bright green
         pointRadius: 1,
         type: 'scatter',
       });
