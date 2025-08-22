@@ -1,29 +1,29 @@
 <!-- src/components/PinInspector.vue -->
 <template>
   <div class="pin-inspector">
-    <!-- Fail Log Viewer -->
-    <div class="csv-viewer">
-      <h4>Fail Log Viewer</h4>
-      <div class="csv-controls">
-        <button @click="processFails" class="control-button">Process Fail Logs</button>
-        <span v-if="logFiles.length > 0" class="file-info">
-          {{ currentLogFile.name }} ({{ currentPage }} / {{ logFiles.length }})
-        </span>
-      </div>
-      <div v-if="logFiles.length > 0" class="pagination">
-        <button @click="prevPage" :disabled="currentPage === 1">Previous</button>
-        <button @click="nextPage" :disabled="currentPage === logFiles.length">Next</button>
-      </div>
-      <textarea v-model="logContent" readonly class="csv-content-area"></textarea>
+    <div class="controls">
+      <button @click="processFailLogs" class="action-button">Process Fail Logs</button>
     </div>
-
-    <!-- Pin Highlighting Controls -->
-    <div class="highlight-controls">
-      <h4>Highlight Pin</h4>
-      <div class="input-group">
-        <input type="text" v-model="pinIdToHighlight" placeholder="Enter Pin ID" />
-        <button @click="highlightPin" class="control-button">Highlight</button>
-      </div>
+    <div v-if="logFiles.length > 0" class="log-navigation">
+      <button @click="prevLog" :disabled="currentLogIndex === 0">Previous</button>
+      <button @click="nextLog" :disabled="currentLogIndex >= logFiles.length - 1">Next</button>
+    </div>
+    <div v-if="currentLogFile" class="log-details">
+      <h3>Log File: {{ currentLogFile.name }}</h3>
+      <textarea :value="currentLogFile.content" readonly class="csv-content-area"></textarea>
+    </div>
+    <div v-if="currentLogFile && currentLogFile.failedPins.length > 0" class="failed-pins">
+      <h4>Failed Pins:</h4>
+      <ul class="failed-pins-list">
+        <li 
+          v-for="pinId in currentLogFile.failedPins" 
+          :key="pinId" 
+          @click="togglePinSelection(pinId)"
+          :class="{ 'selected': pinId === selectedPinId }"
+        >
+          {{ pinId }}
+        </li>
+      </ul>
     </div>
   </div>
 </template>
@@ -31,32 +31,37 @@
 <script setup>
 import { ref, computed, watch } from 'vue';
 
-const emit = defineEmits(['highlight-pin', 'highlight-pins']);
+const emit = defineEmits(['highlight-pins', 'select-pin']);
 
-// --- Fail Log Viewer State ---
 const logFiles = ref([]);
-const currentPage = ref(1);
+const currentLogIndex = ref(0);
 const logContent = ref('');
+const selectedPinId = ref(null);
 
-// --- Pin Highlighting State ---
-const pinIdToHighlight = ref('');
+const togglePinSelection = (pinId) => {
+  if (selectedPinId.value === pinId) {
+    selectedPinId.value = null; // Deselect if already selected
+  } else {
+    selectedPinId.value = pinId; // Select the new pin
+  }
+  emit('select-pin', selectedPinId.value);
+};
 
-// --- Computed Properties ---
 const currentLogFile = computed(() => {
-  return logFiles.value[currentPage.value - 1] || {};
+  return logFiles.value[currentLogIndex.value] || null;
 });
 
 // --- Watchers ---
-watch(currentPage, () => {
+watch(currentLogIndex, () => {
   updateLogContentAndHighlight();
 });
 
 // --- Methods ---
-const processFails = async () => {
+const processFailLogs = async () => {
   const files = await window.electronAPI.processFailLogs();
   if (files && files.length > 0) {
     logFiles.value = files;
-    currentPage.value = 1;
+    currentLogIndex.value = 0;
     updateLogContentAndHighlight();
   }
 };
@@ -68,92 +73,129 @@ const updateLogContentAndHighlight = () => {
   }
 };
 
-const prevPage = () => {
-  if (currentPage.value > 1) {
-    currentPage.value--;
+const prevLog = () => {
+  if (currentLogIndex.value > 0) {
+    currentLogIndex.value--;
   }
 };
 
-const nextPage = () => {
-  if (currentPage.value < logFiles.value.length) {
-    currentPage.value++;
-  }
-};
-
-const highlightPin = () => {
-  if (pinIdToHighlight.value.trim()) {
-    emit('highlight-pin', pinIdToHighlight.value.trim());
+const nextLog = () => {
+  if (currentLogIndex.value < logFiles.value.length - 1) {
+    currentLogIndex.value++;
   }
 };
 </script>
 
 <style scoped>
+/* General component styling */
 .pin-inspector {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
   padding: 15px;
-  background-color: #fff;
+  background-color: #f8f9fa; /* Light grey background */
   border-radius: 8px;
-  border: 1px solid #e2e8f0;
-}
-
-h4 {
-  margin-bottom: 10px;
-  color: #334155;
-  font-weight: 600;
-}
-
-.csv-viewer, .highlight-controls {
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Subtle shadow for depth */
   display: flex;
   flex-direction: column;
+  gap: 15px; /* Space between elements */
 }
 
-.csv-controls, .pagination, .input-group {
+/* Styling for the controls area */
+.controls {
   display: flex;
+  flex-direction: column;
   gap: 10px;
-  align-items: center;
-  margin-bottom: 10px;
 }
 
-.file-info {
-  font-size: 0.9em;
-  color: #64748b;
+/* Log navigation buttons */
+.log-navigation {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
 }
 
-.control-button, .pagination button {
+.log-navigation button {
+  flex-grow: 1;
   padding: 8px 12px;
-  border: 1px solid #cbd5e1;
-  border-radius: 6px;
-  background-color: #f8fafc;
+  background-color: #6c757d; /* Grey color for navigation */
+  color: white;
+  border: none;
+  border-radius: 5px;
   cursor: pointer;
-  transition: background-color 0.2s;
+  transition: background-color 0.3s;
 }
 
-.control-button:hover, .pagination button:hover {
-  background-color: #f1f5f9;
-}
-
-.pagination button:disabled {
-  opacity: 0.5;
+.log-navigation button:disabled {
+  background-color: #adb5bd; /* Lighter grey when disabled */
   cursor: not-allowed;
 }
 
-.csv-content-area {
-  width: 100%;
-  height: 200px;
-  font-family: monospace;
-  font-size: 0.85em;
-  padding: 10px;
-  border: 1px solid #cbd5e1;
-  border-radius: 6px;
-  resize: vertical;
+.log-navigation button:not(:disabled):hover {
+  background-color: #5a6268;
 }
 
-.input-group input {
-  flex-grow: 1;
-  padding: 8px;
-  border: 1px solid #cbd5e1;
-  border-radius: 6px;
+/* Log details section */
+.log-details {
+  margin-top: 10px;
+}
+
+.log-details h3 {
+  margin-top: 0;
+  font-size: 1.1em;
+  color: #333;
+}
+
+/* Failed pins section */
+.failed-pins {
+  margin-top: 15px;
+}
+
+.failed-pins h4 {
+  margin-top: 0;
+  font-size: 1em;
+  color: #333;
+  border-bottom: 1px solid #dee2e6; /* Separator line */
+  padding-bottom: 5px;
+}
+
+/* Styles for the list of failed pins */
+.failed-pins-list {
+  list-style-type: none;
+  padding: 0;
+  margin-top: 10px;
+  max-height: 150px;
+  overflow-y: auto;
+  border: 1px solid #dee2e6; /* Border around the list */
+  border-radius: 5px;
+}
+
+.failed-pins-list li {
+  padding: 8px 12px;
+  border-bottom: 1px solid #e9ecef; /* Lighter separator */
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.failed-pins-list li:last-child {
+  border-bottom: none;
+}
+
+.failed-pins-list li:hover {
+  background-color: #e9ecef; /* Hover effect */
+}
+
+/* Main action button */
+.action-button {
+  width: 100%;
+  padding: 12px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 16px;
+  transition: background-color 0.3s;
+}
+
+.action-button:hover {
+  background-color: #0056b3;
 }
 </style>

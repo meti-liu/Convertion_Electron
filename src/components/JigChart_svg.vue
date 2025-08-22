@@ -91,15 +91,25 @@
 import { ref, computed, watch } from 'vue';
 
 const props = defineProps({
-  chartData: Object,
-  title: String,
+  chartData: {
+    type: Object,
+    required: true,
+  },
+  title: {
+    type: String,
+    default: 'Jig Chart',
+  },
   highlightedPinIds: {
     type: Array,
-    default: () => []
+    default: () => [],
+  },
+  selectedPinId: {
+    type: [String, Number],
+    default: null,
   },
 });
 
-// --- Refs and State ---
+const pan = ref({ x: 0, y: 0 });
 const svgRef = ref(null);
 const dataBounds = ref({ minX: 0, minY: 0, width: 1, height: 1 });
 
@@ -139,12 +149,13 @@ const adrPins = computed(() => {
     props.chartData?.datasets?.filter(d => d.type === 'scatter').forEach(dataset => {
         dataset.data.forEach(pin => {
             const isHighlighted = props.highlightedPinIds.includes(pin.id);
+            const isSelected = props.selectedPinId === pin.id;
             pins.push({
                 ...pin,
-                color: isHighlighted ? 'red' : dataset.backgroundColor,
-                radius: isHighlighted ? pinRadius.value * 4 : pinRadius.value,
-                stroke: isHighlighted ? 'darkred' : 'none',
-                strokeWidth: isHighlighted ? pinRadius.value / 2 : 0,
+                color: isSelected ? 'blue' : (isHighlighted ? 'red' : dataset.backgroundColor),
+                radius: isHighlighted || isSelected ? pinRadius.value * 4 : pinRadius.value,
+                stroke: isHighlighted || isSelected ? 'darkred' : 'none',
+                strokeWidth: isHighlighted || isSelected ? pinRadius.value / 2 : 0,
             });
         });
     });

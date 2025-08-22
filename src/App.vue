@@ -14,11 +14,13 @@
         <JigChart
           :chartData="chartDataTop"
           :highlightedPinIds="highlightedPinIds"
+          :selectedPinId="selectedPinId"
           title="Top Jig (Side A)"
         />
         <JigChart
           :chartData="chartDataBot"
           :highlightedPinIds="highlightedPinIds"
+          :selectedPinId="selectedPinId"
           title="Bottom Jig (Side B)"
         />
       </div>
@@ -26,7 +28,10 @@
       <!-- New Controls Sidebar -->
       <div class="controls-sidebar">
         <ControlPanel>
-          <PinInspector @highlight-pins="handleHighlightPins" />
+          <PinInspector 
+            @highlight-pins="handleHighlightPins"
+            @select-pin="handleSelectPin"
+          />
         </ControlPanel>
       </div>
     </div>
@@ -42,9 +47,14 @@ import PinInspector from './components/PinInspector.vue';
 const chartDataTop = ref({ datasets: [] });
 const chartDataBot = ref({ datasets: [] });
 const highlightedPinIds = ref([]);
+const selectedPinId = ref(null);
 
 function handleHighlightPins(pinIds) {
   highlightedPinIds.value = pinIds;
+}
+
+function handleSelectPin(pinId) {
+  selectedPinId.value = pinId;
 }
 
 async function loadAndProcessFiles() {
