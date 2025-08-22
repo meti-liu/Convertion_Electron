@@ -114,9 +114,9 @@ const props = defineProps({
     type: Array,
     default: () => [],
   },
-  selectedPinGroup: {
-    type: Array,
-    default: () => [],
+  selectedPinId: {
+    type: [String, Number],
+    default: null,
   },
   pinToZoom: {
     type: Object,
@@ -160,27 +160,21 @@ const rutDatasets = computed(() => {
 });
 
 const adrPins = computed(() => {
-    const normalPins = [];
-    const selectedPins = [];
+    const pins = [];
     props.chartData?.datasets?.filter(d => d.type === 'scatter').forEach(dataset => {
         dataset.data.forEach(pin => {
             const isHighlighted = props.highlightedPinIds.includes(pin.id);
-            const isSelected = props.selectedPinGroup.includes(pin.id);
-            const pinData = {
+            const isSelected = props.selectedPinId === pin.id;
+            pins.push({
                 ...pin,
                 color: isSelected ? 'white' : (isHighlighted ? 'red' : dataset.backgroundColor),
                 radius: isHighlighted || isSelected ? pinRadius.value * 4 : pinRadius.value,
                 stroke: isHighlighted || isSelected ? 'darkred' : 'none',
                 strokeWidth: isHighlighted || isSelected ? pinRadius.value / 2 : 0,
-            };
-            if (isSelected) {
-                selectedPins.push(pinData);
-            } else {
-                normalPins.push(pinData);
-            }
+            });
         });
     });
-    return [...normalPins, ...selectedPins];
+    return pins;
 });
 
 const pinRadius = computed(() => 0.25 / Math.sqrt(scale.value));
