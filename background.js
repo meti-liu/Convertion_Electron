@@ -3,8 +3,8 @@ const path = require('path');
 const fs = require('fs').promises; // Use promises-based fs
 const sqlite3 = require('sqlite3').verbose();
 
-// Initialize DB
-const dbPath = path.join(app.getPath('userData'), 'failures.db');
+// Initialize DB in the project's root directory
+const dbPath = path.join(__dirname, 'jig_data.db');
 const db = new sqlite3.Database(dbPath, (err) => {
   if (err) {
     console.error('Database opening error: ', err);
@@ -76,7 +76,7 @@ ipcMain.handle('process-files', async () => {
   const scriptArgs = [...rutFiles, adrFile];
 
   // 4. Spawn Python process and return a promise
-  return new Promise((resolve, reject) => {
+  return new Promise(async (resolve, reject) => { // Make the promise async
     const pyProcess = spawn('python', [scriptPath, ...scriptArgs]);
 
     let stdout = '';
@@ -90,24 +90,57 @@ ipcMain.handle('process-files', async () => {
       stderr += data.toString();
     });
 
-    pyProcess.on('close', (code) => {
+    pyProcess.on('close', async (code) => { // Make the callback async
       if (code !== 0) {
         console.error(`Python stderr: ${stderr}`);
         dialog.showErrorBox('Python Script Error', stderr);
         return reject(new Error(`Python script exited with code ${code}`));
       }
       try {
-        // 5. Parse the JSON output from Python and resolve the promise
-        resolve(JSON.parse(stdout));
+        // 5. Parse the JSON output from Python
+        const pinData = JSON.parse(stdout);
+
+        // 6. Now, ask for the fail log files
+        const { canceled: logCanceled, filePaths: logFilePaths } = await dialog.showOpenDialog({
+          title: 'Select Fail Log Files',
+          properties: ['openFile', 'multiSelections'],
+          filters: [{ name: 'Log Files', extensions: ['csv', 'txt'] }],
+        });
+
+        let failedPins = [];
+        if (!logCanceled && logFilePaths.length > 0) {
+          // 7. Process each log file
+          for (const logPath of logFilePaths) {
+            const results = await runFailParser(logPath); // Use existing helper
+            const pins = results.map(r => r.pin);
+            failedPins.push(...pins);
+
+            // Add to database
+            const stmt = db.prepare("INSERT INTO failures (pin_number, error_type, log_file) VALUES (?, ?, ?)");
+            for (const item of results) {
+              stmt.run(item.pin, item.error_type, path.basename(logPath));
+            }
+            stmt.finalize();
+          }
+        }
+
+        // 8. Combine pin data with failed pins and resolve
+        resolve({
+          ...pinData,
+          failedPins: [...new Set(failedPins)] // Ensure unique pin IDs
+        });
+
       } catch (e) {
-        dialog.showErrorBox('JSON Parse Error', 'Failed to parse JSON from Python script.');
-        reject(new Error('Failed to parse JSON from Python script.'));
+        console.error('Processing Error:', e);
+        dialog.showErrorBox('Processing Error', 'Failed to process files or parse script output.');
+        reject(e);
       }
     });
   });
 });
 
 // Handle request to read CSV files
+// This handler might now be redundant or used for other purposes, but we'll leave it.
 ipcMain.handle('read-csv-files', async () => {
   const { canceled, filePaths } = await dialog.showOpenDialog({
     properties: ['openFile', 'multiSelections'],

@@ -15,14 +15,14 @@
           :chartData="chartDataTop"
           :highlightedPinIds="highlightedPinIds"
           :selectedPinId="selectedPinId"
-          :pinToZoom="pinToZoom"
+          :pinToZoom="topPinToZoom" 
           title="Top Jig (Side A)"
         />
         <JigChart
           :chartData="chartDataBot"
           :highlightedPinIds="highlightedPinIds"
           :selectedPinId="selectedPinId"
-          :pinToZoom="pinToZoom"
+          :pinToZoom="botPinToZoom"
           title="Bottom Jig (Side B)"
         />
       </div>
@@ -33,6 +33,7 @@
           <PinInspector 
             @highlight-pins="handleHighlightPins"
             @select-pin="handleSelectPin"
+            :failedPins="failedPins"
           />
         </ControlPanel>
       </div>
@@ -50,7 +51,9 @@ const chartDataTop = ref({ datasets: [] });
 const chartDataBot = ref({ datasets: [] });
 const highlightedPinIds = ref([]);
 const selectedPinId = ref(null);
-const pinToZoom = ref(null);
+const topPinToZoom = ref(null); // Separate zoom state for Top Jig
+const botPinToZoom = ref(null); // Separate zoom state for Bottom Jig
+const failedPins = ref([]); // To store failed pin IDs from the backend
 
 function handleHighlightPins(pinIds) {
   highlightedPinIds.value = pinIds;
@@ -58,27 +61,57 @@ function handleHighlightPins(pinIds) {
 
 function handleSelectPin(pinId) {
   selectedPinId.value = pinId;
+  
+  // Reset both zoom states
+  topPinToZoom.value = null;
+  botPinToZoom.value = null;
+
   if (pinId) {
     let foundPin = null;
-    const allDatasets = [...chartDataTop.value.datasets, ...chartDataBot.value.datasets];
-    for (const dataset of allDatasets) {
+    let foundIn = null; // 'top' or 'bot'
+
+    // Check Top Jig datasets
+    for (const dataset of chartDataTop.value.datasets) {
       if (dataset.type === 'scatter') {
         foundPin = dataset.data.find(p => p.id === pinId);
-        if (foundPin) break;
+        if (foundPin) {
+          foundIn = 'top';
+          break;
+        }
       }
     }
-    pinToZoom.value = foundPin;
-  } else {
-    pinToZoom.value = null;
+
+    // If not found, check Bottom Jig datasets
+    if (!foundPin) {
+      for (const dataset of chartDataBot.value.datasets) {
+        if (dataset.type === 'scatter') {
+          foundPin = dataset.data.find(p => p.id === pinId);
+          if (foundPin) {
+            foundIn = 'bot';
+            break;
+          }
+        }
+      }
+    }
+
+    // Set the zoom state for the correct chart
+    if (foundIn === 'top') {
+      topPinToZoom.value = foundPin;
+    } else if (foundIn === 'bot') {
+      botPinToZoom.value = foundPin;
+    }
   }
 }
 
 async function loadAndProcessFiles() {
   const result = await window.electronAPI.processFiles();
   if (result && result.rut_data) {
-    const { rut_data, adr_data } = result;
+    const { rut_data, adr_data, failedPins: backendFailedPins } = result;
 
-    // Find the max pin number to determine the scale of the chart
+    // Store the failed pins
+    failedPins.value = backendFailedPins || [];
+
+    // --- Data Processing (remains largely the same) ---
     const topRutData = result.rut_data.filter(data =>
         data.filename.toUpperCase().includes('TOP')
     );
@@ -101,7 +134,7 @@ async function loadAndProcessFiles() {
     if (result.adr_data?.side_a) {
       topDatasets.push({
         label: 'ADR Pins - Side A',
-        data: result.adr_data.side_a.map(pin => ({ ...pin, id: pin.no })), // Ensure pins have an ID
+        data: result.adr_data.side_a.map(pin => ({ ...pin, id: pin.no })),
         backgroundColor: 'green',
         pointRadius: 1,
         type: 'scatter',
@@ -124,15 +157,18 @@ async function loadAndProcessFiles() {
     if (result.adr_data?.side_b) {
       botDatasets.push({
         label: 'ADR Pins - Side B',
-        data: result.adr_data.side_b.map(pin => ({ ...pin, id: pin.no })), // Ensure pins have an ID
+        data: result.adr_data.side_b.map(pin => ({ ...pin, id: pin.no })),
         backgroundColor: 'green',
         pointRadius: 1,
         type: 'scatter',
       });
     }
     chartDataBot.value = { datasets: botDatasets };
+
+    // Automatically highlight failed pins on load
+    handleHighlightPins(failedPins.value);
   }
-};
+}
 </script>
 
 <style>
