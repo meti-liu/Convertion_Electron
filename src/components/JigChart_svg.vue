@@ -366,7 +366,7 @@ function redo() {
 }
 
 function zoomToPin(pin) {
-  const targetScale = 5; 
+  const targetScale = 8; 
   const point = { x: pin.x, y: pin.y };
 
   const centerX = dataBounds.value.minX + dataBounds.value.width / 2;

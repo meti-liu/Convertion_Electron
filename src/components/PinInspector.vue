@@ -35,7 +35,6 @@ const emit = defineEmits(['highlight-pins', 'select-pin']);
 
 const logFiles = ref([]);
 const currentLogIndex = ref(0);
-const logContent = ref('');
 const selectedPinId = ref(null);
 
 const togglePinSelection = (pinId) => {
@@ -68,7 +67,6 @@ const processFailLogs = async () => {
 
 const updateLogContentAndHighlight = () => {
   if (currentLogFile.value) {
-    logContent.value = currentLogFile.value.content;
     emit('highlight-pins', currentLogFile.value.failedPins || []);
   }
 };
@@ -141,6 +139,19 @@ const nextLog = () => {
   margin-top: 0;
   font-size: 1.1em;
   color: #333;
+}
+
+.csv-content-area {
+  width: 100%; /* Full width */
+  height: 200px; /* Taller default height */
+  min-height: 100px; /* Minimum height */
+  resize: vertical; /* Allow vertical resizing */
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-family: monospace;
+  white-space: pre-wrap; /* Wrap long lines */
+  box-sizing: border-box; /* Ensure padding is included in width */
 }
 
 /* Failed pins section */

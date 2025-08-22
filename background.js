@@ -48,7 +48,7 @@ app.whenReady().then(createWindow);
 // ... (app lifecycle events)
 
 ipcMain.handle('process-files', async () => {
-  // 1. Open file dialog to get file paths
+  // 1. Open file dialog to get .rut and .adr files
   const { canceled, filePaths } = await dialog.showOpenDialog({
     properties: ['openFile', 'multiSelections'],
     filters: [
@@ -60,8 +60,7 @@ ipcMain.handle('process-files', async () => {
     return null;
   }
 
-  // 2. Find the python script
-  // Assumes the script is in the parent directory under 'Convertion'
+  // 2. Find the python script for jig processing
   const scriptPath = path.join(__dirname, 'json_script.py');
   
   // 3. Separate files and prepare arguments
@@ -75,8 +74,8 @@ ipcMain.handle('process-files', async () => {
   
   const scriptArgs = [...rutFiles, adrFile];
 
-  // 4. Spawn Python process and return a promise
-  return new Promise(async (resolve, reject) => { // Make the promise async
+  // 4. Spawn Python process to get jig data
+  return new Promise((resolve, reject) => {
     const pyProcess = spawn('python', [scriptPath, ...scriptArgs]);
 
     let stdout = '';
@@ -90,57 +89,25 @@ ipcMain.handle('process-files', async () => {
       stderr += data.toString();
     });
 
-    pyProcess.on('close', async (code) => { // Make the callback async
+    pyProcess.on('close', (code) => {
       if (code !== 0) {
         console.error(`Python stderr: ${stderr}`);
         dialog.showErrorBox('Python Script Error', stderr);
         return reject(new Error(`Python script exited with code ${code}`));
       }
       try {
-        // 5. Parse the JSON output from Python
-        const pinData = JSON.parse(stdout);
-
-        // 6. Now, ask for the fail log files
-        const { canceled: logCanceled, filePaths: logFilePaths } = await dialog.showOpenDialog({
-          title: 'Select Fail Log Files',
-          properties: ['openFile', 'multiSelections'],
-          filters: [{ name: 'Log Files', extensions: ['csv', 'txt'] }],
-        });
-
-        let failedPins = [];
-        if (!logCanceled && logFilePaths.length > 0) {
-          // 7. Process each log file
-          for (const logPath of logFilePaths) {
-            const results = await runFailParser(logPath); // Use existing helper
-            const pins = results.map(r => r.pin);
-            failedPins.push(...pins);
-
-            // Add to database
-            const stmt = db.prepare("INSERT INTO failures (pin_number, error_type, log_file) VALUES (?, ?, ?)");
-            for (const item of results) {
-              stmt.run(item.pin, item.error_type, path.basename(logPath));
-            }
-            stmt.finalize();
-          }
-        }
-
-        // 8. Combine pin data with failed pins and resolve
-        resolve({
-          ...pinData,
-          failedPins: [...new Set(failedPins)] // Ensure unique pin IDs
-        });
-
+        // 5. Parse and resolve with the jig data
+        resolve(JSON.parse(stdout));
       } catch (e) {
-        console.error('Processing Error:', e);
-        dialog.showErrorBox('Processing Error', 'Failed to process files or parse script output.');
-        reject(e);
+        dialog.showErrorBox('JSON Parse Error', 'Failed to parse JSON from Python script.');
+        reject(new Error('Failed to parse JSON from Python script.'));
       }
     });
   });
 });
 
-// Handle request to read CSV files
-// This handler might now be redundant or used for other purposes, but we'll leave it.
+// This handler is now deprecated and can be removed or kept for other purposes.
+// We will leave it for now.
 ipcMain.handle('read-csv-files', async () => {
   const { canceled, filePaths } = await dialog.showOpenDialog({
     properties: ['openFile', 'multiSelections'],
@@ -171,56 +138,73 @@ ipcMain.handle('read-csv-files', async () => {
   }
 });
 
-// IPC handler to process failure logs
+// IPC handler to process and pair failure logs
 ipcMain.handle('process-fail-logs', async () => {
-  console.log('IPC event "process-fail-logs" received.');
-
   const { canceled, filePaths } = await dialog.showOpenDialog(mainWindow, {
-    title: 'Select Fail Logs',
+    title: 'Select Fail Logs (NGLog and TestResult)',
     properties: ['openFile', 'multiSelections'],
     filters: [{ name: 'Log Files', extensions: ['csv', 'txt'] }],
   });
 
   if (canceled || !filePaths || filePaths.length === 0) {
-    console.log('No files selected or dialog was canceled.');
-    return []; // Return empty array if no files selected
+    return [];
   }
 
-  console.log(`Files selected: ${filePaths.join(', ')}`);
+  // 1. Pair files by timestamp
+  const logPairs = {};
+  const timestampRegex = /(\d{8}-\d{6})/; // Extracts YYYYMMDD-HHMMSS
 
-  const processedFiles = [];
   for (const filePath of filePaths) {
-    try {
-      console.log(`Processing file: ${filePath}`);
-      const content = await fs.readFile(filePath, 'utf-8');
-      const results = await runFailParser(filePath);
-      console.log(`Parsed results from Python:`, results);
-
-      const failedPins = results.map(r => r.pin);
-
-      // Add to database
-      const stmt = db.prepare("INSERT INTO failures (pin_number, error_type, log_file) VALUES (?, ?, ?)");
-      for (const item of results) {
-        stmt.run(item.pin, item.error_type, path.basename(filePath));
+    const match = filePath.match(timestampRegex);
+    if (match) {
+      const timestamp = match[1];
+      if (!logPairs[timestamp]) {
+        logPairs[timestamp] = {};
       }
-      stmt.finalize();
-      console.log(`Finished processing and DB insertion for ${filePath}`);
-
-      processedFiles.push({
-        name: path.basename(filePath),
-        content: content,
-        failedPins: failedPins
-      });
-
-    } catch (error) {
-      console.error(`Failed to process ${filePath}:`, error);
-      dialog.showErrorBox('Processing Error', `An error occurred while processing ${filePath}:\n\n${error.message}`);
-      return []; // Return empty array on error
+      if (filePath.toLowerCase().endsWith('.csv')) {
+        logPairs[timestamp].csv = filePath;
+      } else if (filePath.toLowerCase().endsWith('.txt')) {
+        logPairs[timestamp].txt = filePath;
+      }
     }
   }
 
-  console.log('Returning all processed files:', processedFiles);
-  return processedFiles; // Return the array of processed file objects
+  // 2. Process each complete pair
+  const processedLogs = [];
+  for (const timestamp in logPairs) {
+    const pair = logPairs[timestamp];
+    if (pair.csv && pair.txt) {
+      try {
+        // a. Get structured failure data from CSV and update DB
+        const parsedResults = await runFailParser(pair.csv);
+        const failedPins = parsedResults.map(r => r.pin);
+
+        // b. Read the content of the corresponding TXT file
+        const txtContent = await fs.readFile(pair.txt, 'utf-8');
+
+        // c. Add to database
+        const stmt = db.prepare("INSERT INTO failures (pin_number, error_type, log_file) VALUES (?, ?, ?)");
+        for (const item of parsedResults) {
+          stmt.run(item.pin, item.error_type, path.basename(pair.csv));
+        }
+        stmt.finalize();
+
+        // d. Aggregate results for the frontend
+        processedLogs.push({
+          id: timestamp,
+          name: path.basename(pair.txt),
+          content: txtContent,
+          failedPins: failedPins,
+        });
+
+      } catch (error) {
+        console.error(`Failed to process log pair for ${timestamp}:`, error);
+        dialog.showErrorBox('Processing Error', `An error occurred while processing logs for ${timestamp}:\n\n${error.message}`);
+      }
+    }
+  }
+
+  return processedLogs;
 });
 
 function runFailParser(filePath) {
