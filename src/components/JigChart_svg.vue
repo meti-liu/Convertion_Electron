@@ -107,6 +107,10 @@ const props = defineProps({
     type: [String, Number],
     default: null,
   },
+  pinToZoom: {
+    type: Object,
+    default: null,
+  },
 });
 
 const pan = ref({ x: 0, y: 0 });
@@ -165,7 +169,18 @@ const adrPins = computed(() => {
 const pinRadius = computed(() => 0.25 / Math.sqrt(scale.value));
 const strokeWidth = computed(() => 0.5 / Math.sqrt(scale.value));
 
-// --- Methods ---
+// --- Watchers ---
+
+watch(() => props.pinToZoom, (pin) => {
+  if (pin) {
+    zoomToPin(pin);
+  } else {
+    if (history.value.length > 1 || scale.value !== 1 || translateX.value !== 0 || translateY.value !== 0) {
+      reset();
+    }
+  }
+});
+
 watch(() => props.chartData, (newData) => {
   if (!newData || !newData.datasets || newData.datasets.length === 0) return;
 
@@ -331,7 +346,7 @@ function applyState(state) {
     scale.value = state.scale;
     translateX.value = state.translateX;
     translateY.value = state.translateY;
-    zoomLevel.value = state.scale;
+    updateZoomSlider();
 }
 
 function undo() {
@@ -348,6 +363,26 @@ function redo() {
     history.value.push(nextState);
     applyState(nextState);
   }
+}
+
+function zoomToPin(pin) {
+  const targetScale = 5; 
+  const point = { x: pin.x, y: pin.y };
+
+  const centerX = dataBounds.value.minX + dataBounds.value.width / 2;
+  const centerY = dataBounds.value.minY + dataBounds.value.height / 2;
+
+  scale.value = targetScale;
+  translateX.value = centerX - point.x * targetScale;
+  translateY.value = centerY - point.y * targetScale;
+
+  saveState();
+  updateZoomSlider();
+}
+
+function updateZoomSlider() {
+  const level = Math.log(scale.value) / Math.log(1.4) + 1;
+  zoomLevel.value = Math.max(1, Math.min(20, level));
 }
 </script>
 

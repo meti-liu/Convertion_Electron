@@ -15,12 +15,14 @@
           :chartData="chartDataTop"
           :highlightedPinIds="highlightedPinIds"
           :selectedPinId="selectedPinId"
+          :pinToZoom="pinToZoom"
           title="Top Jig (Side A)"
         />
         <JigChart
           :chartData="chartDataBot"
           :highlightedPinIds="highlightedPinIds"
           :selectedPinId="selectedPinId"
+          :pinToZoom="pinToZoom"
           title="Bottom Jig (Side B)"
         />
       </div>
@@ -48,6 +50,7 @@ const chartDataTop = ref({ datasets: [] });
 const chartDataBot = ref({ datasets: [] });
 const highlightedPinIds = ref([]);
 const selectedPinId = ref(null);
+const pinToZoom = ref(null);
 
 function handleHighlightPins(pinIds) {
   highlightedPinIds.value = pinIds;
@@ -55,6 +58,19 @@ function handleHighlightPins(pinIds) {
 
 function handleSelectPin(pinId) {
   selectedPinId.value = pinId;
+  if (pinId) {
+    let foundPin = null;
+    const allDatasets = [...chartDataTop.value.datasets, ...chartDataBot.value.datasets];
+    for (const dataset of allDatasets) {
+      if (dataset.type === 'scatter') {
+        foundPin = dataset.data.find(p => p.id === pinId);
+        if (foundPin) break;
+      }
+    }
+    pinToZoom.value = foundPin;
+  } else {
+    pinToZoom.value = null;
+  }
 }
 
 async function loadAndProcessFiles() {
