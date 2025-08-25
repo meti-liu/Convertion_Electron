@@ -12,4 +12,7 @@ contextBridge.exposeInMainWorld('electronAPI',
   onTcpServerStatus: (callback) => ipcRenderer.on('tcp-server-status', callback),
   onTcpDataReceived: (callback) => ipcRenderer.on('tcp-data-received', callback),
   onFileCopyStatus: (callback) => ipcRenderer.on('file-copy-status', callback),
+  // Listen for auto-loaded data
+  onJigDataLoaded: (callback) => ipcRenderer.on('jig-data-loaded', (_event, data) => callback(data)),
+  onFailLogsLoaded: (callback) => ipcRenderer.on('fail-logs-loaded', (_event, data) => callback(data)),
 });

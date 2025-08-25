@@ -1,9 +1,6 @@
 <!-- src/components/PinInspector.vue -->
 <template>
   <div class="pin-inspector">
-    <div class="controls">
-      <button @click="processFailLogs" class="action-button">Process Fail Logs</button>
-    </div>
     <div v-if="logFiles.length > 0" class="log-navigation">
       <button @click="prevLog" :disabled="currentLogIndex === 0">Previous</button>
       <button @click="nextLog" :disabled="currentLogIndex >= logFiles.length - 1">Next</button>
@@ -31,11 +28,30 @@
 <script setup>
 import { ref, computed, watch } from 'vue';
 
+const props = defineProps({
+  logs: {
+    type: Array,
+    default: () => []
+  }
+});
+
 const emit = defineEmits(['highlight-pins', 'select-pin']);
 
 const logFiles = ref([]);
 const currentLogIndex = ref(0);
 const selectedPinId = ref(null);
+
+// Watch for changes in the logs prop
+watch(() => props.logs, (newLogs) => {
+  if (newLogs && newLogs.length > 0) {
+    logFiles.value = newLogs;
+    currentLogIndex.value = 0;
+    updateLogContentAndHighlight();
+  } else {
+    logFiles.value = [];
+    currentLogIndex.value = 0;
+  }
+}, { immediate: true, deep: true });
 
 const togglePinSelection = (pinId) => {
   if (selectedPinId.value === pinId) {
@@ -56,15 +72,6 @@ watch(currentLogIndex, () => {
 });
 
 // --- Methods ---
-const processFailLogs = async () => {
-  const files = await window.electronAPI.processFailLogs();
-  if (files && files.length > 0) {
-    logFiles.value = files;
-    currentLogIndex.value = 0;
-    updateLogContentAndHighlight();
-  }
-};
-
 const updateLogContentAndHighlight = () => {
   if (currentLogFile.value) {
     emit('highlight-pins', currentLogFile.value.failedPins || []);

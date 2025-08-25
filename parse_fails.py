@@ -3,28 +3,33 @@ import csv
 import json
 
 def parse_fail_log(file_path):
-    """Parses a CSV fail log to extract failure pin numbers."""
-    failed_pins = []
+    """Parses a CSV fail log to extract failure pin numbers or pairs."""
+    failed_pin_groups = []
     try:
         with open(file_path, mode='r', encoding='utf-8') as csvfile:
             reader = csv.DictReader(csvfile)
             for row in reader:
-                # Extract pin numbers from Pin1 and Pin2, which are the most reliable
-                pin1 = row.get('Pin1')
-                pin2 = row.get('Pin2')
-                error_type = row.get('Item', 'UNKNOWN')
+                pin1_str = row.get('Pin1')
+                pin2_str = row.get('Pin2')
 
-                if pin1 and pin1.isdigit():
-                    failed_pins.append({"pin": int(pin1), "error_type": error_type})
-                if pin2 and pin2.isdigit():
-                    failed_pins.append({"pin": int(pin2), "error_type": error_type})
+                if pin1_str and pin1_str.isdigit():
+                    pin1 = int(pin1_str)
+                    # If Pin2 exists and is a number, create a pair
+                    if pin2_str and pin2_str.isdigit():
+                        pin2 = int(pin2_str)
+                        failed_pin_groups.append([pin1, pin2])
+                    # Otherwise, it's a single pin failure
+                    else:
+                        failed_pin_groups.append([pin1])
+                # Handle cases where only Pin2 might exist (less common)
+                elif pin2_str and pin2_str.isdigit():
+                    failed_pin_groups.append([int(pin2_str)])
 
     except Exception as e:
-        # If there's an error, print it to stderr for Electron to catch
         print(f"Error processing file {file_path}: {e}", file=sys.stderr)
         return []
 
-    return failed_pins
+    return failed_pin_groups
 
 if __name__ == "__main__":
     # The first argument from command line is the file path

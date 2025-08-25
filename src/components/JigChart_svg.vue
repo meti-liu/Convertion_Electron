@@ -161,9 +161,11 @@ const rutDatasets = computed(() => {
 
 const adrPins = computed(() => {
     const pins = [];
+    const flatHighlightedPins = props.highlightedPinIds.flat();
+
     props.chartData?.datasets?.filter(d => d.type === 'scatter').forEach(dataset => {
         dataset.data.forEach(pin => {
-            const isHighlighted = props.highlightedPinIds.includes(pin.id);
+            const isHighlighted = flatHighlightedPins.includes(pin.id);
             const isSelected = props.selectedPinId === pin.id;
             pins.push({
                 ...pin,

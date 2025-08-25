@@ -4,7 +4,8 @@
     <!-- Original Sidebar for Loading Files -->
     <div class="sidebar">
       <h1 class="title">Jig Viewer</h1>
-      <button @click="loadAndProcessFiles" class="load-button">Load Files</button>
+      <button @click="loadAndProcessFiles" class="load-button">Load Jig Files</button>
+      <button @click="loadAndProcessFailLogs" class="load-button">Load Fail Logs</button>
     </div>
 
     <!-- Main Content Area -->
@@ -29,11 +30,11 @@
 
       <!-- New Controls Sidebar -->
       <div class="controls-sidebar">
-        <ControlPanel>
+        <ControlPanel v-if="failedLogs.length > 0">
           <PinInspector 
             @highlight-pins="handleHighlightPins"
             @select-pin="handleSelectPin"
-            :failedPins="failedPins"
+            :logs="failedLogs"
           />
         </ControlPanel>
       </div>
@@ -42,7 +43,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
 import JigChart from './components/JigChart_svg.vue';
 import ControlPanel from './components/ControlPanel.vue';
 import PinInspector from './components/PinInspector.vue';
@@ -53,7 +54,83 @@ const highlightedPinIds = ref([]);
 const selectedPinId = ref(null);
 const topPinToZoom = ref(null); // Separate zoom state for Top Jig
 const botPinToZoom = ref(null); // Separate zoom state for Bottom Jig
-const failedPins = ref([]); // To store failed pin IDs from the backend
+const failedLogs = ref([]); // To store structured fail log data
+const highlightedPinIds = ref([]);
+const selectedPinId = ref(null);
+
+// --- Data Processing Functions ---
+function processJigData(result) {
+  if (!result || !result.rut_data) return;
+
+  const { rut_data, adr_data } = result;
+
+  // --- Top Jig Chart Data (Side A) ---
+  const topRutData = rut_data.filter(data => data.filename.toUpperCase().includes('TOP'));
+  const topDatasets = topRutData.map((data, index) => ({
+    label: data.filename,
+    data: data.coords.map(c => ({ x: c[0], y: c[1] })),
+    borderColor: ['#FF5733', '#FFD700', '#00FFFF'][index % 3],
+    borderWidth: 2,
+    showLine: true,
+    fill: false,
+    type: 'line',
+    pointRadius: 0,
+  }));
+
+  if (adr_data?.side_a) {
+    topDatasets.push({
+      label: 'ADR Pins - Side A',
+      data: adr_data.side_a.map(pin => ({ ...pin, id: pin.no })),
+      backgroundColor: '#00FF00',
+      pointRadius: 1,
+      type: 'scatter',
+    });
+  }
+  chartDataTop.value = { datasets: topDatasets };
+
+  // --- Bottom Jig Chart Data (Side B) ---
+  const botRutData = rut_data.filter(data => data.filename.toUpperCase().includes('BOT'));
+  const botDatasets = botRutData.map((data, index) => ({
+    label: data.filename,
+    data: data.coords.map(c => ({ x: c[0], y: c[1] })),
+    borderColor: ['#FF5733', '#FFD700', '#00FFFF'][index % 3],
+    borderWidth: 2,
+    showLine: true,
+    fill: false,
+    type: 'line',
+    pointRadius: 0,
+  }));
+
+  if (adr_data?.side_b) {
+    botDatasets.push({
+      label: 'ADR Pins - Side B',
+      data: adr_data.side_b.map(pin => ({ ...pin, id: pin.no })),
+      backgroundColor: '#00FF00',
+      pointRadius: 1,
+      type: 'scatter',
+    });
+  }
+  chartDataBot.value = { datasets: botDatasets };
+}
+
+function processFailLogs(logs) {
+  if (!logs || !logs.length) {
+    failedLogs.value = [];
+    handleHighlightPins([]); // Clear highlights if no logs
+    return;
+  }
+  failedLogs.value = logs;
+  // Initially highlight all failed pins from all logs
+  const allFailedPins = logs.reduce((acc, log) => acc.concat(log.failedPins || []), []);
+  handleHighlightPins([...new Set(allFailedPins)]);
+}
+
+// --- Lifecycle Hooks ---
+onMounted(() => {
+  // Listen for automatically loaded data from the main process
+  window.electronAPI.onJigDataLoaded(processJigData);
+  window.electronAPI.onFailLogsLoaded(processFailLogs);
+});
 
 function handleHighlightPins(pinIds) {
   highlightedPinIds.value = pinIds;
@@ -105,70 +182,15 @@ function handleSelectPin(pinId) {
 
 async function loadAndProcessFiles() {
   const result = await window.electronAPI.processFiles();
-  if (result && result.rut_data) {
-    const { rut_data, adr_data, failedPins: backendFailedPins } = result;
-
-    // Store the failed pins
-    failedPins.value = backendFailedPins || [];
-
-    // --- Data Processing (remains largely the same) ---
-    const topRutData = result.rut_data.filter(data =>
-        data.filename.toUpperCase().includes('TOP')
-    );
-    const botRutData = result.rut_data.filter(data =>
-        data.filename.toUpperCase().includes('BOT')
-    );
-
-    // --- Top Jig Chart Data (Side A) ---
-    const topDatasets = topRutData.map((data, index) => ({
-      label: data.filename,
-      data: data.coords.map(c => ({ x: c[0], y: c[1] })),
-      borderColor: ['#FF5733', '#FFD700', '#00FFFF'][index % 3], // Brighter colors
-      borderWidth: 2,
-      showLine: true,
-      fill: false,
-      type: 'line',
-      pointRadius: 0,
-    }));
-
-    if (result.adr_data?.side_a) {
-      topDatasets.push({
-        label: 'ADR Pins - Side A',
-        data: result.adr_data.side_a.map(pin => ({ ...pin, id: pin.no })),
-        backgroundColor: '#00FF00', // Changed to bright green
-        pointRadius: 1,
-        type: 'scatter',
-      });
-    }
-    chartDataTop.value = { datasets: topDatasets };
-
-    // --- Bottom Jig Chart Data (Side B) ---
-    const botDatasets = botRutData.map((data, index) => ({
-      label: data.filename,
-      data: data.coords.map(c => ({ x: c[0], y: c[1] })),
-      borderColor: ['#FF5733', '#FFD700', '#00FFFF'][index % 3], // Brighter colors
-      borderWidth: 2,
-      showLine: true,
-      fill: false,
-      type: 'line',
-      pointRadius: 0,
-    }));
-
-    if (result.adr_data?.side_b) {
-      botDatasets.push({
-        label: 'ADR Pins - Side B',
-        data: result.adr_data.side_b.map(pin => ({ ...pin, id: pin.no })),
-        backgroundColor: '#00FF00', // Changed to bright green
-        pointRadius: 1,
-        type: 'scatter',
-      });
-    }
-    chartDataBot.value = { datasets: botDatasets };
-
-    // Automatically highlight failed pins on load
-    handleHighlightPins(failedPins.value);
-  }
+  processJigData(result); // Use the refactored function
 }
+
+// Manual load for fail logs
+async function loadAndProcessFailLogs() {
+  const logs = await window.electronAPI.processFailLogs();
+  processFailLogs(logs); // Use the refactored function
+}
+
 </script>
 
 <style>
