@@ -1,10 +1,10 @@
 <!-- src/App.vue -->
 <template>
   <div id="app-container">
-    <!-- Original Sidebar for Loading Files -->
+    <!-- Sidebar is removed as loading is now automatic -->
     <div class="sidebar">
       <h1 class="title">Jig Viewer</h1>
-      <button @click="loadAndProcessFiles" class="load-button">Load Files</button>
+      <!-- The "Load Files" button is removed -->
     </div>
 
     <!-- Main Content Area -->
@@ -42,7 +42,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
 import JigChart from './components/JigChart_svg.vue';
 import ControlPanel from './components/ControlPanel.vue';
 import PinInspector from './components/PinInspector.vue';
@@ -54,6 +54,79 @@ const selectedPinId = ref(null);
 const topPinToZoom = ref(null); // Separate zoom state for Top Jig
 const botPinToZoom = ref(null); // Separate zoom state for Bottom Jig
 const failedPins = ref([]); // To store failed pin IDs from the backend
+
+// Function to process the data and update charts
+function updateChartData(result) {
+  console.log('[App.vue] updateChartData called with:', result);
+  if (result && result.rut_data) {
+    const { rut_data, adr_data } = result;
+
+    // --- Data Processing ---
+    const topRutData = rut_data.filter(data =>
+        data.filename.toUpperCase().includes('TOP')
+    );
+    const botRutData = rut_data.filter(data =>
+        data.filename.toUpperCase().includes('BOT')
+    );
+
+    // --- Top Jig Chart Data (Side A) ---
+    const topDatasets = topRutData.map((data, index) => ({
+      label: data.filename,
+      data: data.coords.map(c => ({ x: c[0], y: c[1] })),
+      borderColor: ['#FF5733', '#FFD700', '#00FFFF'][index % 3],
+      borderWidth: 2,
+      showLine: true,
+      fill: false,
+      type: 'line',
+      pointRadius: 0,
+    }));
+
+    if (adr_data?.side_a) {
+      topDatasets.push({
+        label: 'ADR Pins - Side A',
+        data: adr_data.side_a.map(pin => ({ ...pin, id: pin.no })),
+        backgroundColor: '#00FF00',
+        pointRadius: 1,
+        type: 'scatter',
+      });
+    }
+    chartDataTop.value = { datasets: topDatasets };
+
+    // --- Bottom Jig Chart Data (Side B) ---
+    const botDatasets = botRutData.map((data, index) => ({
+      label: data.filename,
+      data: data.coords.map(c => ({ x: c[0], y: c[1] })),
+      borderColor: ['#FF5733', '#FFD700', '#00FFFF'][index % 3],
+      borderWidth: 2,
+      showLine: true,
+      fill: false,
+      type: 'line',
+      pointRadius: 0,
+    }));
+
+    if (adr_data?.side_b) {
+      botDatasets.push({
+        label: 'ADR Pins - Side B',
+        data: adr_data.side_b.map(pin => ({ ...pin, id: pin.no })),
+        backgroundColor: '#00FF00',
+        pointRadius: 1,
+        type: 'scatter',
+      });
+    }
+    chartDataBot.value = { datasets: botDatasets };
+  } else {
+    console.error('[App.vue] updateChartData received invalid or empty data.');
+  }
+}
+
+// Listen for the auto-loaded data when the component mounts
+onMounted(() => {
+  console.log('[App.vue] Component is mounted. Setting up listener for jig-data-loaded.');
+  window.electronAPI.onJigDataLoaded((data) => { // Removed unused 'event' parameter
+    console.log('[App.vue] Received jig-data-loaded event. Data:', data);
+    updateChartData(data);
+  });
+});
 
 function handleHighlightPins(pinIds) {
   highlightedPinIds.value = pinIds;
@@ -103,72 +176,8 @@ function handleSelectPin(pinId) {
   }
 }
 
-async function loadAndProcessFiles() {
-  const result = await window.electronAPI.processFiles();
-  if (result && result.rut_data) {
-    const { rut_data, adr_data, failedPins: backendFailedPins } = result;
+// The loadAndProcessFiles function is no longer needed and is removed.
 
-    // Store the failed pins
-    failedPins.value = backendFailedPins || [];
-
-    // --- Data Processing (remains largely the same) ---
-    const topRutData = result.rut_data.filter(data =>
-        data.filename.toUpperCase().includes('TOP')
-    );
-    const botRutData = result.rut_data.filter(data =>
-        data.filename.toUpperCase().includes('BOT')
-    );
-
-    // --- Top Jig Chart Data (Side A) ---
-    const topDatasets = topRutData.map((data, index) => ({
-      label: data.filename,
-      data: data.coords.map(c => ({ x: c[0], y: c[1] })),
-      borderColor: ['#FF5733', '#FFD700', '#00FFFF'][index % 3], // Brighter colors
-      borderWidth: 2,
-      showLine: true,
-      fill: false,
-      type: 'line',
-      pointRadius: 0,
-    }));
-
-    if (result.adr_data?.side_a) {
-      topDatasets.push({
-        label: 'ADR Pins - Side A',
-        data: result.adr_data.side_a.map(pin => ({ ...pin, id: pin.no })),
-        backgroundColor: '#00FF00', // Changed to bright green
-        pointRadius: 1,
-        type: 'scatter',
-      });
-    }
-    chartDataTop.value = { datasets: topDatasets };
-
-    // --- Bottom Jig Chart Data (Side B) ---
-    const botDatasets = botRutData.map((data, index) => ({
-      label: data.filename,
-      data: data.coords.map(c => ({ x: c[0], y: c[1] })),
-      borderColor: ['#FF5733', '#FFD700', '#00FFFF'][index % 3], // Brighter colors
-      borderWidth: 2,
-      showLine: true,
-      fill: false,
-      type: 'line',
-      pointRadius: 0,
-    }));
-
-    if (result.adr_data?.side_b) {
-      botDatasets.push({
-        label: 'ADR Pins - Side B',
-        data: result.adr_data.side_b.map(pin => ({ ...pin, id: pin.no })),
-        backgroundColor: '#00FF00', // Changed to bright green
-        pointRadius: 1,
-        type: 'scatter',
-      });
-    }
-    chartDataBot.value = { datasets: botDatasets };
-
-    // Automatically highlight failed pins on load
-    handleHighlightPins(failedPins.value);
-  }
-}
 </script>
 
 <style>

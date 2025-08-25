@@ -92,10 +92,43 @@ function createNetworkMonitorWindow() {
   tcp_handler.setWindows(mainWindow, networkMonitorWindow);
 }
 
-app.whenReady().then(createWindow);
+app.whenReady().then(() => {
+  createWindow();
+
+  // Automatically load jig data from 'doc' folder on startup
+  mainWindow.webContents.on('did-finish-load', async () => {
+    console.log('[Auto-Load] did-finish-load event triggered.');
+    try {
+      const docDirectory = path.join(__dirname, 'doc');
+      console.log(`[Auto-Load] Checking for files in: ${docDirectory}`);
+      const files = await fs.readdir(docDirectory);
+
+      const rutFiles = files
+        .filter(file => file.toLowerCase().endsWith('.rut'))
+        .map(file => path.join(docDirectory, file));
+      console.log(`[Auto-Load] Found .rut files:`, rutFiles);
+
+      const adrFile = files
+        .map(file => path.join(docDirectory, file))
+        .find(file => file.toLowerCase().endsWith('.adr'));
+      console.log(`[Auto-Load] Found .adr file:`, adrFile);
+
+      if (rutFiles.length > 0 && adrFile) {
+        console.log('[Auto-Load] Found jig files, calling processJigFiles...');
+        const jigData = await processJigFiles(rutFiles, adrFile);
+        console.log('[Auto-Load] processJigFiles completed. Sending jig-data-loaded event to renderer.');
+        mainWindow.webContents.send('jig-data-loaded', jigData);
+      } else {
+        console.log('[Auto-Load] Jig files (.rut and .adr) not found in doc directory. Manual load required.');
+      }
+    } catch (error) {
+      console.error('[Auto-Load] Failed to automatically load jig data:', error);
+      dialog.showErrorBox('Auto-load Error', 'Failed to automatically load jig data from the "doc" directory.');
+    }
+  });
+});
 
 ipcMain.handle('process-files', async () => {
-  // 1. Open file dialog to get .rut and .adr files
   const { canceled, filePaths } = await dialog.showOpenDialog({
     properties: ['openFile', 'multiSelections'],
     filters: [
@@ -107,10 +140,6 @@ ipcMain.handle('process-files', async () => {
     return null;
   }
 
-  // 2. Find the python script for jig processing
-  const scriptPath = path.join(__dirname, 'json_script.py');
-  
-  // 3. Separate files and prepare arguments
   const rutFiles = filePaths.filter(p => p.toLowerCase().endsWith('.rut'));
   const adrFile = filePaths.find(p => p.toLowerCase().endsWith('.adr'));
 
@@ -119,38 +148,7 @@ ipcMain.handle('process-files', async () => {
     return null;
   }
   
-  const scriptArgs = [...rutFiles, adrFile];
-
-  // 4. Spawn Python process to get jig data
-  return new Promise((resolve, reject) => {
-    const pyProcess = spawn('python', [scriptPath, ...scriptArgs]);
-
-    let stdout = '';
-    let stderr = '';
-
-    pyProcess.stdout.on('data', (data) => {
-      stdout += data.toString();
-    });
-
-    pyProcess.stderr.on('data', (data) => {
-      stderr += data.toString();
-    });
-
-    pyProcess.on('close', (code) => {
-      if (code !== 0) {
-        console.error(`Python stderr: ${stderr}`);
-        dialog.showErrorBox('Python Script Error', stderr);
-        return reject(new Error(`Python script exited with code ${code}`));
-      }
-      try {
-        // 5. Parse and resolve with the jig data
-        resolve(JSON.parse(stdout));
-      } catch (e) {
-        dialog.showErrorBox('JSON Parse Error', 'Failed to parse JSON from Python script.');
-        reject(new Error('Failed to parse JSON from Python script.'));
-      }
-    });
-  });
+  return processJigFiles(rutFiles, adrFile);
 });
 
 // This handler is now deprecated and can be removed or kept for other purposes.
@@ -253,6 +251,41 @@ ipcMain.handle('process-fail-logs', async () => {
 
   return processedLogs;
 });
+
+// Function to process .rut and .adr files
+async function processJigFiles(rutFiles, adrFile) {
+  const scriptPath = path.join(__dirname, 'json_script.py');
+  const scriptArgs = [...rutFiles, adrFile];
+
+  return new Promise((resolve, reject) => {
+    const pyProcess = spawn('python', [scriptPath, ...scriptArgs]);
+
+    let stdout = '';
+    let stderr = '';
+
+    pyProcess.stdout.on('data', (data) => {
+      stdout += data.toString();
+    });
+
+    pyProcess.stderr.on('data', (data) => {
+      stderr += data.toString();
+    });
+
+    pyProcess.on('close', (code) => {
+      if (code !== 0) {
+        console.error(`Python stderr: ${stderr}`);
+        dialog.showErrorBox('Python Script Error', stderr);
+        return reject(new Error(`Python script exited with code ${code}`));
+      }
+      try {
+        resolve(JSON.parse(stdout));
+      } catch (e) {
+        dialog.showErrorBox('JSON Parse Error', 'Failed to parse JSON from Python script.');
+        reject(new Error('Failed to parse JSON from Python script.'));
+      }
+    });
+  });
+}
 
 function runFailParser(filePath) {
   return new Promise((resolve, reject) => {
