@@ -1,7 +1,8 @@
-const { app, BrowserWindow, ipcMain, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, Menu } = require('electron');
 const path = require('path');
 const fs = require('fs').promises; // Use promises-based fs
 const sqlite3 = require('sqlite3').verbose();
+const tcp_handler = require('./tcp_handler');
 
 // Initialize DB in the project's root directory
 const dbPath = path.join(__dirname, 'jig_data.db');
@@ -26,10 +27,11 @@ const db = new sqlite3.Database(dbPath, (err) => {
 });
 
 let mainWindow;
+let networkMonitorWindow = null;
 const { spawn } = require('child_process');
 
 function createWindow() {
-  const win = new BrowserWindow({
+  mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
     webPreferences: {
@@ -39,13 +41,58 @@ function createWindow() {
     },
   });
 
-  win.loadURL('http://localhost:5173');
-  win.webContents.openDevTools();
+  const menu = Menu.buildFromTemplate([
+    {
+      label: 'View',
+      submenu: [
+        {
+          label: 'Toggle Network Monitor',
+          click: () => {
+            if (networkMonitorWindow) {
+              networkMonitorWindow.close();
+            } else {
+              createNetworkMonitorWindow();
+            }
+          }
+        },
+        { type: 'separator' },
+        { role: 'reload' },
+        { role: 'toggledevtools' }
+      ]
+    }
+  ]);
+  Menu.setApplicationMenu(menu);
+
+  mainWindow.loadURL('http://localhost:5173');
+  mainWindow.webContents.openDevTools();
+
+  tcp_handler.setWindows(mainWindow, networkMonitorWindow);
+}
+
+function createNetworkMonitorWindow() {
+  networkMonitorWindow = new BrowserWindow({
+    width: 800,
+    height: 600,
+    title: 'Network Monitor',
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+      contextIsolation: true,
+      nodeIntegration: false,
+    },
+  });
+
+  // Load the network.html from the Vite dev server
+  networkMonitorWindow.loadURL('http://localhost:5173/network.html');
+
+  networkMonitorWindow.on('closed', () => {
+    networkMonitorWindow = null;
+    tcp_handler.setWindows(mainWindow, null);
+  });
+
+  tcp_handler.setWindows(mainWindow, networkMonitorWindow);
 }
 
 app.whenReady().then(createWindow);
-
-// ... (app lifecycle events)
 
 ipcMain.handle('process-files', async () => {
   // 1. Open file dialog to get .rut and .adr files
@@ -243,4 +290,15 @@ app.on('window-all-closed', () => {
     db.close(); // Close the database connection
     app.quit();
   }
+});
+
+// IPC handlers for TCP Server
+ipcMain.on('tcp-start', (event, options) => {
+  tcp_handler.startServer(options).catch(err => {
+    console.error('Failed to start TCP server:', err.message);
+  });
+});
+
+ipcMain.on('tcp-stop', () => {
+  tcp_handler.stopServer();
 });
