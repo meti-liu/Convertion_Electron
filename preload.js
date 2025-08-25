@@ -4,9 +4,11 @@ const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('electronAPI', 
 {
   processFiles: () => ipcRenderer.invoke('process-files'),
-  readCsvFiles: () => ipcRenderer.invoke('read-csv-files'), // Add this line
+  readCsvFiles: () => ipcRenderer.invoke('read-csv-files'),
   processFailLogs: () => ipcRenderer.invoke('process-fail-logs'),
-  getFailFomart: (path) => ipcRenderer.invoke('get-fail-fomart', path),
+  onJigDataLoaded: (callback) => ipcRenderer.on('jig-data-loaded', (event, ...args) => callback(...args)),
+  onFailDataLoaded: (callback) => ipcRenderer.on('fail-data-loaded', (event, ...args) => callback(...args)),
+  // TCP Server related
   startTcpServer: (options) => ipcRenderer.send('tcp-start', options),
   stopTcpServer: () => ipcRenderer.send('tcp-stop'),
   onTcpServerStatus: (callback) => ipcRenderer.on('tcp-server-status', callback),

@@ -1,16 +1,11 @@
 <!-- src/App.vue -->
 <template>
   <div id="app-container">
-    <!-- Sidebar is removed as loading is now automatic -->
-    <div class="sidebar">
-      <h1 class="title">Jig Viewer</h1>
-      <!-- The "Load Files" button is removed -->
-    </div>
-
     <!-- Main Content Area -->
     <div class="main-content">
       <!-- Jig Charts -->
       <div class="charts-area">
+        <h1 class="title">Jig & Log Viewer</h1>
         <JigChart
           :chartData="chartDataTop"
           :highlightedPinIds="highlightedPinIds"
@@ -34,6 +29,7 @@
             @highlight-pins="handleHighlightPins"
             @select-pin="handleSelectPin"
             :failedPins="failedPins"
+            :failData="fail_data" 
           />
         </ControlPanel>
       </div>
@@ -54,6 +50,7 @@ const selectedPinId = ref(null);
 const topPinToZoom = ref(null); // Separate zoom state for Top Jig
 const botPinToZoom = ref(null); // Separate zoom state for Bottom Jig
 const failedPins = ref([]); // To store failed pin IDs from the backend
+const fail_data = ref([]); // To store data from fail-data-loaded event
 
 // Function to process the data and update charts
 function updateChartData(result) {
@@ -121,10 +118,21 @@ function updateChartData(result) {
 
 // Listen for the auto-loaded data when the component mounts
 onMounted(() => {
-  console.log('[App.vue] Component is mounted. Setting up listener for jig-data-loaded.');
-  window.electronAPI.onJigDataLoaded((data) => { // Removed unused 'event' parameter
+  console.log('[App.vue] Component is mounted. Setting up listeners.');
+
+  // Listen for the auto-loaded jig data
+  window.electronAPI.onJigDataLoaded((data) => {
     console.log('[App.vue] Received jig-data-loaded event. Data:', data);
     updateChartData(data);
+  });
+
+  // Listen for the auto-loaded failure log data
+  window.electronAPI.onFailDataLoaded((data) => {
+    console.log('[App.vue] Received fail-data-loaded event. Data:', data);
+    fail_data.value = data;
+    // Extract all failed pin IDs from all logs
+    const allFailedPins = data.flatMap(log => log.failedPins);
+    failedPins.value = [...new Set(allFailedPins)]; // Store unique pin IDs
   });
 });
 
@@ -210,4 +218,14 @@ function handleSelectPin(pinId) {
   display: flex;
   flex-direction: column;
 }
+
+.title {
+    font-size: 1.5em;
+    color: #333;
+    padding: 10px;
+    text-align: center;
+    background-color: #f0f0f0;
+    border-bottom: 1px solid #ddd;
+}
+
 </style>

@@ -95,35 +95,58 @@ function createNetworkMonitorWindow() {
 app.whenReady().then(() => {
   createWindow();
 
-  // Automatically load jig data from 'doc' folder on startup
+  // Automatically load data on startup
   mainWindow.webContents.on('did-finish-load', async () => {
     console.log('[Auto-Load] did-finish-load event triggered.');
+
+    // --- Auto-load and process .rut and .adr files from 'doc' directory ---
+    const docDir = path.join(__dirname, 'doc');
     try {
-      const docDirectory = path.join(__dirname, 'doc');
-      console.log(`[Auto-Load] Checking for files in: ${docDirectory}`);
-      const files = await fs.readdir(docDirectory);
+      console.log(`[Auto-Load] Checking for jig files in: ${docDir}`);
+      const files = await fs.readdir(docDir);
 
       const rutFiles = files
         .filter(file => file.toLowerCase().endsWith('.rut'))
-        .map(file => path.join(docDirectory, file));
-      console.log(`[Auto-Load] Found .rut files:`, rutFiles);
-
+        .map(file => path.join(docDir, file));
       const adrFile = files
-        .map(file => path.join(docDirectory, file))
+        .map(file => path.join(docDir, file))
         .find(file => file.toLowerCase().endsWith('.adr'));
-      console.log(`[Auto-Load] Found .adr file:`, adrFile);
 
       if (rutFiles.length > 0 && adrFile) {
-        console.log('[Auto-Load] Found jig files, calling processJigFiles...');
+        console.log(`[Auto-Load] Found ${rutFiles.length} .rut and 1 .adr file. Processing...`);
         const jigData = await processJigFiles(rutFiles, adrFile);
-        console.log('[Auto-Load] processJigFiles completed. Sending jig-data-loaded event to renderer.');
+        console.log('[Auto-Load] Jig data processed. Sending to renderer...');
         mainWindow.webContents.send('jig-data-loaded', jigData);
       } else {
-        console.log('[Auto-Load] Jig files (.rut and .adr) not found in doc directory. Manual load required.');
+        console.log('[Auto-Load] Not enough .rut or .adr files found in /doc to proceed.');
       }
     } catch (error) {
-      console.error('[Auto-Load] Failed to automatically load jig data:', error);
+      console.error('[Auto-Load] Error during jig file auto-load:', error);
       dialog.showErrorBox('Auto-load Error', 'Failed to automatically load jig data from the "doc" directory.');
+    }
+
+    // --- Auto-load and process log files from 'doc_test' directory ---
+    const docTestDir = path.join(__dirname, 'doc_test');
+    try {
+      console.log(`[Debug] 1. Starting auto-load for fail logs from: ${docTestDir}`);
+      const files = await fs.readdir(docTestDir);
+      console.log(`[Debug] 2. Found ${files.length} total files in doc_test.`);
+      const logFiles = files
+        .filter(f => f.toLowerCase().endsWith('.csv') || f.toLowerCase().endsWith('.txt'))
+        .map(f => path.join(docTestDir, f));
+      console.log(`[Debug] 3. Filtered ${logFiles.length} log files (.csv, .txt).`);
+
+      if (logFiles.length > 0) {
+        console.log(`[Debug] 4. Calling processFailLogs with ${logFiles.length} files.`);
+        const failData = await processFailLogs(logFiles);
+        console.log(`[Debug] 8. processFailLogs finished. Sending ${failData.length} items to renderer.`);
+        mainWindow.webContents.send('fail-data-loaded', failData);
+        console.log('[Debug] 9. Sent fail-data-loaded IPC message.');
+      } else {
+        console.log('[Auto-Load] No log files found in /doc_test.');
+      }
+    } catch (error) {
+      console.error('[Auto-Load] FATAL CRASH during fail log auto-load:', error);
     }
   });
 });
@@ -195,6 +218,12 @@ ipcMain.handle('process-fail-logs', async () => {
     return [];
   }
 
+  return processFailLogs(filePaths);
+});
+
+// Function to process and pair failure log files from a given list of paths
+async function processFailLogs(filePaths) {
+  console.log('[Debug-PFL] 5. Entered processFailLogs.');
   // 1. Pair files by timestamp
   const logPairs = {};
   const timestampRegex = /(\d{8}-\d{6})/; // Extracts YYYYMMDD-HHMMSS
@@ -213,6 +242,7 @@ ipcMain.handle('process-fail-logs', async () => {
       }
     }
   }
+  console.log('[Debug-PFL] 5a. Finished pairing files. Found pairs:', Object.keys(logPairs));
 
   // 2. Process each complete pair
   const processedLogs = [];
@@ -220,19 +250,34 @@ ipcMain.handle('process-fail-logs', async () => {
     const pair = logPairs[timestamp];
     if (pair.csv && pair.txt) {
       try {
+        console.log(`[Debug-PFL] 6. Processing pair for timestamp: ${timestamp}`);
         // a. Get structured failure data from CSV and update DB
+        console.log(`[Debug-PFL] 6a. Running fail parser for ${pair.csv}`);
         const parsedResults = await runFailParser(pair.csv);
+        console.log(`[Debug-PFL] 6b. Parser returned ${parsedResults.length} results.`);
         const failedPins = parsedResults.map(r => r.pin);
 
         // b. Read the content of the corresponding TXT file
+        console.log(`[Debug-PFL] 6c. Reading TXT file: ${pair.txt}`);
         const txtContent = await fs.readFile(pair.txt, 'utf-8');
+        console.log('[Debug-PFL] 6d. Finished reading TXT file.');
 
         // c. Add to database
+        console.log('[Debug-PFL] 7. Preparing database statement...');
         const stmt = db.prepare("INSERT INTO failures (pin_number, error_type, log_file) VALUES (?, ?, ?)");
+        console.log('[Debug-PFL] 7a. Statement prepared. Looping through results to insert...');
         for (const item of parsedResults) {
+          // Log before inserting to see if the data is valid
+          console.log(`[Debug-PFL] 7b. Inserting: pin=${item.pin}, type=${item.error_type}, file=${path.basename(pair.csv)}`);
+          if (item.pin === undefined || item.error_type === undefined) {
+             console.error("[Debug-PFL] CRITICAL: Attempting to insert undefined data into DB. Skipping.", item);
+             continue; // Skip this record
+          }
           stmt.run(item.pin, item.error_type, path.basename(pair.csv));
         }
+        console.log('[Debug-PFL] 7c. Finalizing statement...');
         stmt.finalize();
+        console.log('[Debug-PFL] 7d. Statement finalized.');
 
         // d. Aggregate results for the frontend
         processedLogs.push({
@@ -241,16 +286,17 @@ ipcMain.handle('process-fail-logs', async () => {
           content: txtContent,
           failedPins: failedPins,
         });
+        console.log(`[Debug-PFL] 6e. Finished processing pair for ${timestamp}.`);
 
       } catch (error) {
-        console.error(`Failed to process log pair for ${timestamp}:`, error);
+        console.error(`[Debug-PFL] FATAL CRASH processing log pair for ${timestamp}:`, error);
         dialog.showErrorBox('Processing Error', `An error occurred while processing logs for ${timestamp}:\n\n${error.message}`);
       }
     }
   }
-
+  console.log('[Debug-PFL] 7f. Finished processing all pairs.');
   return processedLogs;
-});
+}
 
 // Function to process .rut and .adr files
 async function processJigFiles(rutFiles, adrFile) {
