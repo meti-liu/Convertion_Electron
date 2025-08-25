@@ -12,5 +12,4 @@ contextBridge.exposeInMainWorld('electronAPI',
   onTcpServerStatus: (callback) => ipcRenderer.on('tcp-server-status', callback),
   onTcpDataReceived: (callback) => ipcRenderer.on('tcp-data-received', callback),
   onFileCopyStatus: (callback) => ipcRenderer.on('file-copy-status', callback),
-  onNewLogFile: (callback) => ipcRenderer.on('new-log-file', (event, ...args) => callback(...args)),
 });

@@ -3,7 +3,6 @@ const path = require('path');
 const fs = require('fs').promises; // Use promises-based fs
 const sqlite3 = require('sqlite3').verbose();
 const tcp_handler = require('./tcp_handler');
-const chokidar = require('chokidar');
 
 // Initialize DB in the project's root directory
 const dbPath = path.join(__dirname, 'jig_data.db');
@@ -93,56 +92,7 @@ function createNetworkMonitorWindow() {
   tcp_handler.setWindows(mainWindow, networkMonitorWindow);
 }
 
-app.whenReady().then(() => {
-  createWindow();
-
-  const logDirectory = path.join(__dirname, 'doc_test');
-
-  // Ensure the directory exists
-  fs.mkdir(logDirectory, { recursive: true }).catch(console.error);
-
-  const watcher = chokidar.watch(logDirectory, {
-    ignored: /\.|^\./, // ignore dotfiles
-    persistent: true,
-    ignoreInitial: true,
-    awaitWriteFinish: {
-      stabilityThreshold: 2000,
-      pollInterval: 100
-    }
-  });
-
-  watcher
-    .on('add', async (filePath) => {
-      console.log(`File ${filePath} has been added`);
-      // We have a new file, let's process it.
-      // We assume that for each new .txt file, a corresponding .csv will arrive.
-      // We will trigger the processing when the .txt file arrives.
-      if (path.extname(filePath).toLowerCase() === '.txt') {
-         // Find the corresponding .csv file based on the timestamp in the filename
-         const timestampRegex = /(\d{8}-\d{6})/;
-         const match = path.basename(filePath).match(timestampRegex);
-         if (match) {
-           const timestamp = match[1];
-           const csvFileName = `NGLog-${timestamp}.csv`;
-           const csvFilePath = path.join(logDirectory, csvFileName);
-
-           try {
-            // Check if the corresponding CSV file exists
-            await fs.access(csvFilePath);
-            // If it exists, process the pair
-            const processedLog = await processSingleLogFile(csvFilePath, filePath);
-            if (processedLog && mainWindow) {
-              mainWindow.webContents.send('new-log-file', processedLog);
-            }
-           } catch (error) {
-              console.log(`Corresponding CSV file for ${filePath} not found yet. Waiting...`);
-              // You might want to implement a more robust waiting mechanism here
-           }
-         }
-      }
-    })
-    .on('error', error => console.log(`Watcher error: ${error}`));
-});
+app.whenReady().then(createWindow);
 
 ipcMain.handle('process-files', async () => {
   // 1. Open file dialog to get .rut and .adr files
