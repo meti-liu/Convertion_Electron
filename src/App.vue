@@ -1,28 +1,10 @@
 <!-- src/App.vue -->
 <template>
   <div id="app-container">
+    <h1 class="title">Jig & Log Viewer</h1>
     <!-- Main Content Area -->
     <div class="main-content">
-      <!-- Jig Charts -->
-      <div class="charts-area">
-        <h1 class="title">Jig & Log Viewer</h1>
-        <JigChart
-          :chartData="chartDataTop"
-          :highlightedPinIds="highlightedPinIds"
-          :selectedPinId="selectedPinId"
-          :pinToZoom="topPinToZoom" 
-          title="Top Jig (Side A)"
-        />
-        <JigChart
-          :chartData="chartDataBot"
-          :highlightedPinIds="highlightedPinIds"
-          :selectedPinId="selectedPinId"
-          :pinToZoom="botPinToZoom"
-          title="Bottom Jig (Side B)"
-        />
-      </div>
-
-      <!-- New Controls Sidebar -->
+      <!-- Controls are now the first column -->
       <div class="controls-sidebar">
         <ControlPanel>
           <PinInspector 
@@ -33,6 +15,22 @@
           />
         </ControlPanel>
       </div>
+
+      <!-- Jig Charts are now direct children of main-content, forming the next columns -->
+      <JigChart
+        :chartData="chartDataTop"
+        :highlightedPinIds="highlightedPinIds"
+        :selectedPinId="selectedPinId"
+        :pinToZoom="topPinToZoom" 
+        title="Top Jig (Side A)"
+      />
+      <JigChart
+        :chartData="chartDataBot"
+        :highlightedPinIds="highlightedPinIds"
+        :selectedPinId="selectedPinId"
+        :pinToZoom="botPinToZoom"
+        title="Bottom Jig (Side B)"
+      />
     </div>
   </div>
 </template>
@@ -189,43 +187,8 @@ function handleSelectPin(pinId) {
 </script>
 
 <style>
-/* Import the new global stylesheet */
+/* Import the global stylesheet */
 @import './assets/styles.css';
 
-/* Add styles for the new layout */
-#app-container {
-  display: flex;
-  height: 100vh;
-}
-
-.main-content {
-  flex-grow: 1;
-  display: flex;
-  gap: 16px;
-  padding: 16px;
-}
-
-.charts-area {
-  flex-grow: 1;
-  display: flex;
-  flex-direction: column; /* Stack charts vertically */
-  gap: 16px;
-}
-
-.controls-sidebar {
-  width: 320px; /* Adjust width as needed */
-  flex-shrink: 0;
-  display: flex;
-  flex-direction: column;
-}
-
-.title {
-    font-size: 1.5em;
-    color: #333;
-    padding: 10px;
-    text-align: center;
-    background-color: #f0f0f0;
-    border-bottom: 1px solid #ddd;
-}
-
+/* Scoped styles for App.vue layout can go here if needed in the future */
 </style>

@@ -1,6 +1,7 @@
 <!-- src/components/JigChart_svg.vue -->
 <template>
   <div class="chart-container-svg">
+    <div class="chart-title">{{ title }}</div>
     <!-- SVG Viewport -->
     <svg
       ref="svgRef"
@@ -49,8 +50,6 @@
 
     <!-- Toolbar with Icons -->
     <div class="zoom-controls">
-      <span class="title">{{ title }}</span>
-      <span class="separator">|</span>
       <button @click="setMode('pan')" :class="{ 'active-mode': mode === 'pan' }" title="Pan Mode">
         <!-- New Pan Icon (Move) -->
         <svg class="icon" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">

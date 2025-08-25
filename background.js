@@ -63,7 +63,7 @@ function createWindow() {
   ]);
   Menu.setApplicationMenu(menu);
 
-  mainWindow.loadURL('http://localhost:5173');
+  mainWindow.loadURL('http://localhost:5177');
   mainWindow.webContents.openDevTools();
 
   tcp_handler.setWindows(mainWindow, networkMonitorWindow);
@@ -82,7 +82,7 @@ function createNetworkMonitorWindow() {
   });
 
   // Load the network.html from the Vite dev server
-  networkMonitorWindow.loadURL('http://localhost:5173/network.html');
+  networkMonitorWindow.loadURL('http://localhost:5177/network.html');
 
   networkMonitorWindow.on('closed', () => {
     networkMonitorWindow = null;
