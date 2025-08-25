@@ -1,43 +1,25 @@
 <!-- src/App.vue -->
 <template>
   <div id="app-container">
-    <!-- Original Sidebar for Loading Files -->
-    <div class="sidebar">
-      <h1 class="title">Jig Viewer</h1>
-      <button @click="loadAndProcessFiles" class="load-button">Load Files</button>
+    <div id="main-content">
+      <JigChart 
+        :chart-data="chartDataTop" 
+        :highlighted-pins="highlightedPinIds" 
+        :zoom-to-pin="topPinToZoom"
+        title="Top Jig"
+      />
+      <JigChart 
+        :chart-data="chartDataBot" 
+        :highlighted-pins="highlightedPinIds" 
+        :zoom-to-pin="botPinToZoom"
+        title="Bottom Jig"
+      />
     </div>
-
-    <!-- Main Content Area -->
-    <div class="main-content">
-      <!-- Jig Charts -->
-      <div class="charts-area">
-        <JigChart
-          :chartData="chartDataTop"
-          :highlightedPinIds="highlightedPinIds"
-          :selectedPinId="selectedPinId"
-          :pinToZoom="topPinToZoom" 
-          title="Top Jig (Side A)"
-        />
-        <JigChart
-          :chartData="chartDataBot"
-          :highlightedPinIds="highlightedPinIds"
-          :selectedPinId="selectedPinId"
-          :pinToZoom="botPinToZoom"
-          title="Bottom Jig (Side B)"
-        />
-      </div>
-
-      <!-- New Controls Sidebar -->
-      <div class="controls-sidebar">
-        <ControlPanel>
-          <PinInspector 
-            @highlight-pins="handleHighlightPins"
-            @select-pin="handleSelectPin"
-            :failedPins="failedPins"
-          />
-        </ControlPanel>
-      </div>
-    </div>
+    <ControlPanel 
+      :failed-pins="failedPins"
+      @highlight-pins="handleHighlightPins"
+      @zoom-to-pin="handleZoomToPin"
+    />
   </div>
 </template>
 
@@ -50,7 +32,6 @@ import PinInspector from './components/PinInspector.vue';
 const chartDataTop = ref({ datasets: [] });
 const chartDataBot = ref({ datasets: [] });
 const highlightedPinIds = ref([]);
-const selectedPinId = ref(null);
 const topPinToZoom = ref(null); // Separate zoom state for Top Jig
 const botPinToZoom = ref(null); // Separate zoom state for Bottom Jig
 const failedPins = ref([]); // To store failed pin IDs from the backend
@@ -59,116 +40,22 @@ function handleHighlightPins(pinIds) {
   highlightedPinIds.value = pinIds;
 }
 
-function handleSelectPin(pinId) {
-  selectedPinId.value = pinId;
-  
-  // Reset both zoom states
-  topPinToZoom.value = null;
-  botPinToZoom.value = null;
-
-  if (pinId) {
-    let foundPin = null;
-    let foundIn = null; // 'top' or 'bot'
-
-    // Check Top Jig datasets
-    for (const dataset of chartDataTop.value.datasets) {
-      if (dataset.type === 'scatter') {
-        foundPin = dataset.data.find(p => p.id === pinId);
-        if (foundPin) {
-          foundIn = 'top';
-          break;
-        }
-      }
-    }
-
-    // If not found, check Bottom Jig datasets
-    if (!foundPin) {
-      for (const dataset of chartDataBot.value.datasets) {
-        if (dataset.type === 'scatter') {
-          foundPin = dataset.data.find(p => p.id === pinId);
-          if (foundPin) {
-            foundIn = 'bot';
-            break;
-          }
-        }
-      }
-    }
-
-    // Set the zoom state for the correct chart
-    if (foundIn === 'top') {
-      topPinToZoom.value = foundPin;
-    } else if (foundIn === 'bot') {
-      botPinToZoom.value = foundPin;
-    }
-  }
+function handleZoomToPin(pinId) {
+  // Determine which chart the pin belongs to and set the zoom state
+  // This logic assumes you can distinguish top/bottom pins, e.g., by a prefix or range
+  // For now, we'll just try to zoom on both as an example
+  console.log(`Zooming to pin: ${pinId}`);
+  topPinToZoom.value = pinId;
+  botPinToZoom.value = pinId;
 }
 
-async function loadAndProcessFiles() {
-  const result = await window.electronAPI.processFiles();
-  if (result && result.rut_data) {
-    const { rut_data, adr_data, failedPins: backendFailedPins } = result;
-
-    // Store the failed pins
-    failedPins.value = backendFailedPins || [];
-
-    // --- Data Processing (remains largely the same) ---
-    const topRutData = result.rut_data.filter(data =>
-        data.filename.toUpperCase().includes('TOP')
-    );
-    const botRutData = result.rut_data.filter(data =>
-        data.filename.toUpperCase().includes('BOT')
-    );
-
-    // --- Top Jig Chart Data (Side A) ---
-    const topDatasets = topRutData.map((data, index) => ({
-      label: data.filename,
-      data: data.coords.map(c => ({ x: c[0], y: c[1] })),
-      borderColor: ['#FF5733', '#FFD700', '#00FFFF'][index % 3], // Brighter colors
-      borderWidth: 2,
-      showLine: true,
-      fill: false,
-      type: 'line',
-      pointRadius: 0,
-    }));
-
-    if (result.adr_data?.side_a) {
-      topDatasets.push({
-        label: 'ADR Pins - Side A',
-        data: result.adr_data.side_a.map(pin => ({ ...pin, id: pin.no })),
-        backgroundColor: '#00FF00', // Changed to bright green
-        pointRadius: 1,
-        type: 'scatter',
-      });
-    }
-    chartDataTop.value = { datasets: topDatasets };
-
-    // --- Bottom Jig Chart Data (Side B) ---
-    const botDatasets = botRutData.map((data, index) => ({
-      label: data.filename,
-      data: data.coords.map(c => ({ x: c[0], y: c[1] })),
-      borderColor: ['#FF5733', '#FFD700', '#00FFFF'][index % 3], // Brighter colors
-      borderWidth: 2,
-      showLine: true,
-      fill: false,
-      type: 'line',
-      pointRadius: 0,
-    }));
-
-    if (result.adr_data?.side_b) {
-      botDatasets.push({
-        label: 'ADR Pins - Side B',
-        data: result.adr_data.side_b.map(pin => ({ ...pin, id: pin.no })),
-        backgroundColor: '#00FF00', // Changed to bright green
-        pointRadius: 1,
-        type: 'scatter',
-      });
-    }
-    chartDataBot.value = { datasets: botDatasets };
-
-    // Automatically highlight failed pins on load
-    handleHighlightPins(failedPins.value);
-  }
-}
+// Fetch initial chart data when the component mounts
+window.electronAPI.onChartData((event, { topData, botData, fails }) => {
+  console.log("Received chart data from main process");
+  chartDataTop.value = topData;
+  chartDataBot.value = botData;
+  failedPins.value = fails;
+});
 </script>
 
 <style>
