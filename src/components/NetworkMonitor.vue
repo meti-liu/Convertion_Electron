@@ -20,8 +20,8 @@
 <script setup>
 import { ref, onMounted, onUnmounted, computed } from 'vue';
 
-const host = ref('127.0.0.1');
-const port = ref(7003);
+const host = ref('0.0.0.0');
+const port = ref(8080);
 const isRunning = ref(false);
 const statusMessage = ref('Stopped');
 const logs = ref([]);
