@@ -29,11 +29,11 @@
 
       <!-- New Controls Sidebar -->
       <div class="controls-sidebar">
-        <ControlPanel>
+        <ControlPanel v-if="failedLogs.length > 0">
           <PinInspector 
             @highlight-pins="handleHighlightPins"
             @select-pin="handleSelectPin"
-            :failedPins="failedPins"
+            :logs="failedLogs"
           />
         </ControlPanel>
       </div>
@@ -42,7 +42,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
 import JigChart from './components/JigChart_svg.vue';
 import ControlPanel from './components/ControlPanel.vue';
 import PinInspector from './components/PinInspector.vue';
@@ -53,7 +53,19 @@ const highlightedPinIds = ref([]);
 const selectedPinId = ref(null);
 const topPinToZoom = ref(null); // Separate zoom state for Top Jig
 const botPinToZoom = ref(null); // Separate zoom state for Bottom Jig
-const failedPins = ref([]); // To store failed pin IDs from the backend
+const failedLogs = ref([]); // To store structured log data
+
+// When a new log file is automatically processed, add it to our list
+onMounted(() => {
+  window.electronAPI.onNewLogFile((log) => {
+    // Add the new log to the beginning of the array
+    failedLogs.value.unshift(log);
+
+    // Extract all failed pin IDs from all logs and update highlights
+    const allFailedPins = failedLogs.value.flatMap(l => l.failedPins || []);
+    handleHighlightPins(allFailedPins);
+  });
+});
 
 function handleHighlightPins(pinIds) {
   highlightedPinIds.value = pinIds;
@@ -106,16 +118,13 @@ function handleSelectPin(pinId) {
 async function loadAndProcessFiles() {
   const result = await window.electronAPI.processFiles();
   if (result && result.rut_data) {
-    const { rut_data, adr_data, failedPins: backendFailedPins } = result;
-
-    // Store the failed pins
-    failedPins.value = backendFailedPins || [];
+    const { rut_data, adr_data } = result; // Correctly destructure without failedPins
 
     // --- Data Processing (remains largely the same) ---
-    const topRutData = result.rut_data.filter(data =>
+    const topRutData = rut_data.filter(data =>
         data.filename.toUpperCase().includes('TOP')
     );
-    const botRutData = result.rut_data.filter(data =>
+    const botRutData = rut_data.filter(data =>
         data.filename.toUpperCase().includes('BOT')
     );
 
@@ -165,8 +174,9 @@ async function loadAndProcessFiles() {
     }
     chartDataBot.value = { datasets: botDatasets };
 
-    // Automatically highlight failed pins on load
-    handleHighlightPins(failedPins.value);
+    // This part for manual loading is now deprecated for fails, but we keep it for .rut/.adr
+    // If there were any failed pins from a manual load (e.g. initial load), they would be handled here.
+    // However, the primary mechanism is now the file watcher.
   }
 }
 </script>
