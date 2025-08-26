@@ -2,30 +2,37 @@
 <template>
   <div class="pin-inspector">
     <div class="controls">
-      <button @click="processFailLogs" class="action-button">{{ t('load_fail_logs') }}</button>
+      <el-button type="primary" @click="processFailLogs" class="action-button">{{ t('load_fail_logs') }}</el-button>
     </div>
     <div v-if="logFiles.length > 0" class="log-navigation">
-      <button @click="prevLog" :disabled="currentLogIndex === 0">{{ t('previous_log') }}</button>
-      <button @click="nextLog" :disabled="currentLogIndex >= logFiles.length - 1">{{ t('next_log') }}</button>
+      <el-button @click="prevLog" :disabled="currentLogIndex === 0">{{ t('previous_log') }}</el-button>
+      <el-button @click="nextLog" :disabled="currentLogIndex >= logFiles.length - 1">{{ t('next_log') }}</el-button>
     </div>
     <div class="log-display">
       <div v-if="currentLogFile" class="log-content-wrapper">
         <div class="log-header">
           <h3>{{ t('log_file_label', { name: currentLogFile.name }) }}</h3>
         </div>
-        <textarea :value="currentLogFile.content" readonly class="csv-content-area"></textarea>
+        <el-input
+          :model-value="currentLogFile.content"
+          type="textarea"
+          :rows="10"
+          readonly
+          class="csv-content-area"
+        ></el-input>
         <div v-if="currentLogFile.failedPins.length > 0" class="failed-pins">
           <h4>{{ t('failed_pins') }}</h4>
           <div class="pins-grid">
-            <div
+            <el-tag
               v-for="pinId in currentLogFile.failedPins"
               :key="pinId"
               class="pin-item"
-              :class="{ 'selected': pinId === selectedPinId }"
+              :effect="selectedPinId === pinId ? 'dark' : 'plain'"
               @click="togglePinSelection(pinId)"
+              size="large"
             >
               {{ pinId }}
-            </div>
+            </el-tag>
           </div>
         </div>
       </div>
@@ -124,8 +131,38 @@ const nextLog = () => {
 </script>
 
 <style scoped>
-.log-navigation {
+.pin-inspector {
   display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.controls, .log-navigation {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.log-navigation {
   justify-content: space-between;
+}
+
+.log-content-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.failed-pins h4 {
+  margin-bottom: 0.5rem;
+}
+
+.pins-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.pin-item {
+  cursor: pointer;
 }
 </style>
