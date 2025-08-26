@@ -17,5 +17,5 @@ contextBridge.exposeInMainWorld('electronAPI',
   onNewLogFile: (callback) => ipcRenderer.on('new-log-file', (event, ...args) => callback(...args)),
   // Locale related
   setLocale: (locale) => ipcRenderer.send('set-locale', locale),
-  onSetLocale: (callback) => ipcRenderer.on('set-locale', (event, ...args) => callback(...args)),
+  onUpdateLocale: (callback) => ipcRenderer.on('update-locale', (_event, value) => callback(value)),
 });

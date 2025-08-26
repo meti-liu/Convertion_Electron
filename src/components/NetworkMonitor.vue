@@ -1,6 +1,7 @@
 <template>
   <div class="network-monitor">
     <h2>{{ t('network_monitor') }}</h2>
+    <p>Locale: {{ locale }}</p>
     <div class="controls">
       <input v-model="host" :placeholder="t('host_ip_placeholder')" />
       <input v-model="port" type="number" :placeholder="t('port_placeholder')" />
@@ -88,7 +89,7 @@ const handleFileCopyStatus = (event, { status, message }) => {
 onMounted(() => {
   window.electronAPI.onTcpServerStatus(handleServerStatus);
   window.electronAPI.onTcpDataReceived(handleDataReceived);
-  window.electronAPI.onSetLocale(handleLocaleChange);
+  window.electronAPI.onUpdateLocale(handleLocaleChange);
   window.electronAPI.onFileCopyStatus(handleFileCopyStatus);
 });
 

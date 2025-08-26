@@ -1,6 +1,7 @@
 {
   "app_title": "Jig & Log Viewer",
   "top_jig_side_a": "Top Jig (Side A)",
+  "bottom_jig_side_b": "Bottom Jig (Side B)",
   "jig_chart": "Jig Chart",
   "pin_inspector": "Pin Inspector",
   "network_monitor": "Network Monitor",

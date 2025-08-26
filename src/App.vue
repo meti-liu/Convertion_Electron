@@ -30,7 +30,7 @@
         :highlightedPinIds="highlightedPinIds"
         :selectedPinId="selectedPinId"
         :pinToZoom="botPinToZoom"
-        title="Bottom Jig (Side B)"
+        :title="t('bottom_jig_side_b')"
       />
     </div>
   </div>

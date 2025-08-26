@@ -1,6 +1,7 @@
 {
   "app_title": "Jig & Log ビューア",
   "top_jig_side_a": "トップ治具 (A面)",
+  "bottom_jig_side_b": "ボトム治具 (B面)",
   "jig_chart": "治具チャート",
   "pin_inspector": "ピンインスペクター",
   "network_monitor": "ネットワークモニター",

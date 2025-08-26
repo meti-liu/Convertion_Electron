@@ -1,6 +1,7 @@
 {
   "app_title": "Jig & Log 查看器",
   "top_jig_side_a": "頂部夾具 (A面)",
+  "bottom_jig_side_b": "底部夾具 (B面)",
   "jig_chart": "治具圖",
   "pin_inspector": "引腳檢查器",
   "network_monitor": "網路監視器",

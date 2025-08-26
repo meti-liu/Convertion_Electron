@@ -16,8 +16,7 @@ import { watch } from 'vue';
 const { locale } = useI18n();
 
 watch(locale, (newLocale) => {
-  console.log(`Locale changed to: ${newLocale}`);
-  // Here you can add logic to inform the backend if needed
+  window.electronAPI.setLocale(newLocale);
 });
 </script>
 

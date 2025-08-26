@@ -3,10 +3,11 @@ const path = require('path');
 const fs = require('fs').promises; // Use promises-based fs
 const sqlite3 = require('sqlite3').verbose();
 const tcp_handler = require('./tcp_handler');
-const i18n = require('./i18n-backend');
+const i18n = require('./i18n-backend.js');
 
-// Load locales for the backend
-i18n.loadLocales();
+let mainWindow;
+let networkMonitorWindow = null;
+let currentLocale;
 
 // Initialize DB in the project's root directory
 const dbPath = path.join(__dirname, 'jig_data.db');
@@ -30,8 +31,6 @@ const db = new sqlite3.Database(dbPath, (err) => {
   }
 });
 
-let mainWindow;
-let networkMonitorWindow = null;
 const { spawn } = require('child_process');
 
 function createWindow() {
@@ -87,6 +86,9 @@ function createNetworkMonitorWindow() {
 
   // Load the network.html from the Vite dev server
   networkMonitorWindow.loadURL('http://localhost:5179/network.html');
+  networkMonitorWindow.webContents.on('did-finish-load', () => {
+    networkMonitorWindow.webContents.send('set-locale', currentLocale);
+  });
   networkMonitorWindow.webContents.openDevTools();
 
   networkMonitorWindow.on('closed', () => {
@@ -97,7 +99,11 @@ function createNetworkMonitorWindow() {
   tcp_handler.setWindows(mainWindow, networkMonitorWindow);
 }
 
-app.whenReady().then(() => {
+async function main() {
+  // Load locales before creating any windows or menus
+  await i18n.loadLocales();
+  currentLocale = i18n.getLocale();
+
   createWindow();
 
   // Automatically load data on startup
@@ -154,15 +160,13 @@ app.whenReady().then(() => {
       console.error('[Auto-Load] FATAL CRASH during fail log auto-load:', error);
     }
   });
-});
+}
+
+app.whenReady().then(main);
 
 ipcMain.on('set-locale', (event, locale) => {
+  currentLocale = locale; // Update the stored locale
   i18n.setLocale(locale);
-
-  // Forward the locale to the network monitor window if it exists
-  if (networkMonitorWindow) {
-    networkMonitorWindow.webContents.send('set-locale', locale);
-  }
 
   // Re-create the menu to apply the new language
   const menu = Menu.buildFromTemplate([
@@ -186,6 +190,11 @@ ipcMain.on('set-locale', (event, locale) => {
     }
   ]);
   Menu.setApplicationMenu(menu);
+
+  // Send the updated locale to all windows so they can update their UI
+  BrowserWindow.getAllWindows().forEach(win => {
+    win.webContents.send('update-locale', locale);
+  });
 });
 
 ipcMain.handle('process-files', async () => {
