@@ -18,4 +18,5 @@ contextBridge.exposeInMainWorld('electronAPI',
   // Locale related
   setLocale: (locale) => ipcRenderer.send('set-locale', locale),
   onUpdateLocale: (callback) => ipcRenderer.on('update-locale', (_event, value) => callback(value)),
+  requestInitialLocale: () => ipcRenderer.send('request-initial-locale'), // For initial language handshake
 });

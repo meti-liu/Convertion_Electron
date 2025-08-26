@@ -91,6 +91,9 @@ onMounted(() => {
   window.electronAPI.onTcpDataReceived(handleDataReceived);
   window.electronAPI.onUpdateLocale(handleLocaleChange);
   window.electronAPI.onFileCopyStatus(handleFileCopyStatus);
+
+  // Request the initial locale from the main process once the component is ready
+  window.electronAPI.requestInitialLocale();
 });
 
 onUnmounted(() => {

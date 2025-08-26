@@ -33,7 +33,23 @@ const db = new sqlite3.Database(dbPath, (err) => {
 
 const { spawn } = require('child_process');
 
-function createWindow() {
+const loadURLWithRetry = async (win, url, options = { maxRetries: 15, retryDelay: 200 }) => {
+  const { maxRetries, retryDelay } = options;
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      await win.loadURL(url);
+      console.log(`Successfully loaded ${url} after ${i + 1} attempts.`);
+      return;
+    } catch (error) {
+      console.log(`Attempt ${i + 1} to load ${url} failed. Retrying in ${retryDelay}ms...`);
+      await new Promise(resolve => setTimeout(resolve, retryDelay));
+    }
+  }
+  console.error(`Failed to load ${url} after ${maxRetries} attempts.`);
+  dialog.showErrorBox('Load Error', `Failed to load URL: ${url}. Please ensure the dev server is running.`);
+};
+
+async function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
@@ -66,13 +82,19 @@ function createWindow() {
   ]);
   Menu.setApplicationMenu(menu);
 
-  mainWindow.loadURL('http://localhost:5179');
+  await loadURLWithRetry(mainWindow, 'http://localhost:5177');
   mainWindow.webContents.openDevTools();
 
   tcp_handler.setWindows(mainWindow, networkMonitorWindow);
 }
 
-function createNetworkMonitorWindow() {
+ipcMain.on('request-initial-locale', (event) => {
+  if (networkMonitorWindow && !networkMonitorWindow.isDestroyed()) {
+    networkMonitorWindow.webContents.send('update-locale', currentLocale);
+  }
+});
+
+async function createNetworkMonitorWindow() {
   networkMonitorWindow = new BrowserWindow({
     width: 800,
     height: 600,
@@ -85,10 +107,7 @@ function createNetworkMonitorWindow() {
   });
 
   // Load the network.html from the Vite dev server
-  networkMonitorWindow.loadURL('http://localhost:5179/network.html');
-  networkMonitorWindow.webContents.on('did-finish-load', () => {
-    networkMonitorWindow.webContents.send('set-locale', currentLocale);
-  });
+  await loadURLWithRetry(networkMonitorWindow, 'http://localhost:5177/network.html');
   networkMonitorWindow.webContents.openDevTools();
 
   networkMonitorWindow.on('closed', () => {
@@ -104,62 +123,57 @@ async function main() {
   await i18n.loadLocales();
   currentLocale = i18n.getLocale();
 
-  createWindow();
+  await createWindow();
 
-  // Automatically load data on startup
-  mainWindow.webContents.on('did-finish-load', async () => {
-    console.log('[Auto-Load] did-finish-load event triggered.');
+  // --- Auto-load and process .rut and .adr files from 'doc' directory ---
+  const docDir = path.join(__dirname, 'doc');
+  try {
+    console.log(`[Auto-Load] Checking for jig files in: ${docDir}`);
+    const files = await fs.readdir(docDir);
 
-    // --- Auto-load and process .rut and .adr files from 'doc' directory ---
-    const docDir = path.join(__dirname, 'doc');
-    try {
-      console.log(`[Auto-Load] Checking for jig files in: ${docDir}`);
-      const files = await fs.readdir(docDir);
+    const rutFiles = files
+      .filter(file => file.toLowerCase().endsWith('.rut'))
+      .map(file => path.join(docDir, file));
+    const adrFile = files
+      .map(file => path.join(docDir, file))
+      .find(file => file.toLowerCase().endsWith('.adr'));
 
-      const rutFiles = files
-        .filter(file => file.toLowerCase().endsWith('.rut'))
-        .map(file => path.join(docDir, file));
-      const adrFile = files
-        .map(file => path.join(docDir, file))
-        .find(file => file.toLowerCase().endsWith('.adr'));
-
-      if (rutFiles.length > 0 && adrFile) {
-        console.log(`[Auto-Load] Found ${rutFiles.length} .rut and 1 .adr file. Processing...`);
-        const jigData = await processJigFiles(rutFiles, adrFile);
-        console.log('[Auto-Load] Jig data processed. Sending to renderer...');
-        mainWindow.webContents.send('jig-data-loaded', jigData);
-      } else {
-        console.log('[Auto-Load] Not enough .rut or .adr files found in /doc to proceed.');
-      }
-    } catch (error) {
-      console.error('[Auto-Load] Error during jig file auto-load:', error);
-      dialog.showErrorBox(i18n.t('auto_load_error'), i18n.t('auto_load_error_message'));
+    if (rutFiles.length > 0 && adrFile) {
+      console.log(`[Auto-Load] Found ${rutFiles.length} .rut and 1 .adr file. Processing...`);
+      const jigData = await processJigFiles(rutFiles, adrFile);
+      console.log('[Auto-Load] Jig data processed. Sending to renderer...');
+      mainWindow.webContents.send('jig-data-loaded', jigData);
+    } else {
+      console.log('[Auto-Load] Not enough .rut or .adr files found in /doc to proceed.');
     }
+  } catch (error) {
+    console.error('[Auto-Load] Error during jig file auto-load:', error);
+    dialog.showErrorBox(i18n.t('auto_load_error'), i18n.t('auto_load_error_message'));
+  }
 
-    // --- Auto-load and process log files from 'doc_test' directory ---
-    const docTestDir = path.join(__dirname, 'doc_test');
-    try {
-      console.log(`[Debug] 1. Starting auto-load for fail logs from: ${docTestDir}`);
-      const files = await fs.readdir(docTestDir);
-      console.log(`[Debug] 2. Found ${files.length} total files in doc_test.`);
-      const logFiles = files
-        .filter(f => f.toLowerCase().endsWith('.csv') || f.toLowerCase().endsWith('.txt'))
-        .map(f => path.join(docTestDir, f));
-      console.log(`[Debug] 3. Filtered ${logFiles.length} log files (.csv, .txt).`);
+  // --- Auto-load and process log files from 'doc_test' directory ---
+  const docTestDir = path.join(__dirname, 'doc_test');
+  try {
+    console.log(`[Debug] 1. Starting auto-load for fail logs from: ${docTestDir}`);
+    const files = await fs.readdir(docTestDir);
+    console.log(`[Debug] 2. Found ${files.length} total files in doc_test.`);
+    const logFiles = files
+      .filter(f => f.toLowerCase().endsWith('.csv') || f.toLowerCase().endsWith('.txt'))
+      .map(f => path.join(docTestDir, f));
+    console.log(`[Debug] 3. Filtered ${logFiles.length} log files (.csv, .txt).`);
 
-      if (logFiles.length > 0) {
-        console.log(`[Debug] 4. Calling processFailLogs with ${logFiles.length} files.`);
-        const failData = await processFailLogs(logFiles);
-        console.log(`[Debug] 8. processFailLogs finished. Sending ${failData.length} items to renderer.`);
-        mainWindow.webContents.send('fail-data-loaded', failData);
-        console.log('[Debug] 9. Sent fail-data-loaded IPC message.');
-      } else {
-        console.log('[Auto-Load] No log files found in /doc_test.');
-      }
-    } catch (error) {
-      console.error('[Auto-Load] FATAL CRASH during fail log auto-load:', error);
+    if (logFiles.length > 0) {
+      console.log(`[Debug] 4. Calling processFailLogs with ${logFiles.length} files.`);
+      const failData = await processFailLogs(logFiles);
+      console.log(`[Debug] 8. processFailLogs finished. Sending ${failData.length} items to renderer.`);
+      mainWindow.webContents.send('fail-data-loaded', failData);
+      console.log('[Debug] 9. Sent fail-data-loaded IPC message.');
+    } else {
+      console.log('[Auto-Load] No log files found in /doc_test.');
     }
-  });
+  } catch (error) {
+    console.error('[Auto-Load] FATAL CRASH during fail log auto-load:', error);
+  }
 }
 
 app.whenReady().then(main);
