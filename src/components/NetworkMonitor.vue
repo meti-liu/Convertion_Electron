@@ -1,17 +1,17 @@
 <template>
   <div class="network-monitor">
-    <h2>Network Monitor</h2>
+    <h2>{{ t('network_monitor') }}</h2>
     <div class="controls">
-      <input v-model="host" placeholder="Host IP (e.g., 0.0.0.0)" />
-      <input v-model="port" type="number" placeholder="Port (e.g., 8080)" />
-      <button @click="startServer" :disabled="isRunning">Start Server</button>
-      <button @click="stopServer" :disabled="!isRunning">Stop Server</button>
+      <input v-model="host" :placeholder="t('host_ip_placeholder')" />
+      <input v-model="port" type="number" :placeholder="t('port_placeholder')" />
+      <button @click="startServer" :disabled="isRunning">{{ t('start_server') }}</button>
+      <button @click="stopServer" :disabled="!isRunning">{{ t('stop_server') }}</button>
     </div>
     <div class="status">
-      <strong>Status:</strong> <span :class="statusClass">{{ statusMessage }}</span>
+      <strong>{{ t('status_label') }}</strong> <span :class="statusClass">{{ statusMessage }}</span>
     </div>
     <div class="logs">
-      <h3>Logs</h3>
+      <h3>{{ t('logs_label') }}</h3>
       <pre>{{ logs.join('\n') }}</pre>
     </div>
   </div>
@@ -19,6 +19,9 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted, computed } from 'vue';
+import { useI18n } from 'vue-i18n';
+
+const { t, locale } = useI18n();
 
 const host = ref('0.0.0.0');
 const port = ref(8080);
@@ -85,8 +88,18 @@ const handleFileCopyStatus = (event, { status, message }) => {
 onMounted(() => {
   window.electronAPI.onTcpServerStatus(handleServerStatus);
   window.electronAPI.onTcpDataReceived(handleDataReceived);
+  window.electronAPI.onSetLocale(handleLocaleChange);
   window.electronAPI.onFileCopyStatus(handleFileCopyStatus);
 });
+
+onUnmounted(() => {
+  // It's good practice to clean up listeners, though with window-level listeners
+  // in Electron it might not be strictly necessary if the window is closed.
+});
+
+const handleLocaleChange = (newLocale) => {
+  locale.value = newLocale;
+};
 
 onUnmounted(() => {
   // It's good practice to remove listeners when the component is unmounted

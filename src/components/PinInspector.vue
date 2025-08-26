@@ -2,21 +2,20 @@
 <template>
   <div class="pin-inspector">
     <div class="controls">
-      <button @click="processFailLogs" class="action-button">Load Fail Logs Manually</button>
+      <button @click="processFailLogs" class="action-button">{{ t('load_fail_logs') }}</button>
     </div>
     <div v-if="logFiles.length > 0" class="log-navigation">
-      <button @click="prevLog" :disabled="currentLogIndex === 0">Previous</button>
-      <button @click="nextLog" :disabled="currentLogIndex >= logFiles.length - 1">Next</button>
+      <button @click="prevLog" :disabled="currentLogIndex === 0">{{ t('previous_log') }}</button>
+      <button @click="nextLog" :disabled="currentLogIndex >= logFiles.length - 1">{{ t('next_log') }}</button>
     </div>
     <div class="log-display">
       <div v-if="currentLogFile" class="log-content-wrapper">
         <div class="log-header">
-          <h3>Log File: {{ currentLogFile.name }}</h3>
+          <h3>{{ t('log_file_label', { name: currentLogFile.name }) }}</h3>
         </div>
         <textarea :value="currentLogFile.content" readonly class="csv-content-area"></textarea>
-        <!-- This is the new, refactored section for displaying failed pins -->
         <div v-if="currentLogFile.failedPins.length > 0" class="failed-pins">
-          <h4>Failed Pins:</h4>
+          <h4>{{ t('failed_pins') }}</h4>
           <div class="pins-grid">
             <div
               v-for="pinId in currentLogFile.failedPins"
@@ -36,6 +35,9 @@
 
 <script setup>
 import { ref, computed, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
+
+const { t } = useI18n();
 
 const props = defineProps({
   failData: {

@@ -6,17 +6,17 @@
     </div>
     <div class="zoom-controls">
       <!-- 新的模式切换按钮 -->
-      <button @click="setMode('pan')" :class="{ 'active-mode': chartMode === 'pan' }">Pan</button>
-      <button @click="setMode('zoom')" :class="{ 'active-mode': chartMode === 'zoom' }">Zoom</button>
+      <button @click="setMode('pan')" :class="{ 'active-mode': chartMode === 'pan' }">{{ t('pan') }}</button>
+      <button @click="setMode('zoom')" :class="{ 'active-mode': chartMode === 'zoom' }">{{ t('zoom') }}</button>
       <span class="separator">|</span> <!-- 分隔符 -->
       <!-- 新增：后退和前进按钮 -->
-      <button @click="undoZoom" :disabled="historyStack.length <= 1">Undo</button>
-      <button @click="redoZoom" :disabled="forwardStack.length === 0">Redo</button>
-      <button @click="resetZoom">Reset</button>
+      <button @click="undoZoom" :disabled="historyStack.length <= 1">{{ t('undo') }}</button>
+      <button @click="redoZoom" :disabled="forwardStack.length === 0">{{ t('redo') }}</button>
+      <button @click="resetZoom">{{ t('reset') }}</button>
       <span class="separator">|</span>
       <!-- 原有的缩放按钮 -->
-      <button @click="zoomIn">In</button>
-      <button @click="zoomOut">Out</button>
+      <button @click="zoomIn">{{ t('zoom_in') }}</button>
+      <button @click="zoomOut">{{ t('zoom_out') }}</button>
       <input type="range" min="1" max="10" step="0.1" :value="zoomLevel" @input="handleZoomSlider" class="zoom-slider" />
     </div>
   </div>
@@ -26,6 +26,9 @@
 import { ref, onMounted, watch, reactive } from 'vue'; // 导入 reactive
 import Chart from 'chart.js/auto';
 import zoomPlugin from 'chartjs-plugin-zoom';
+import { useI18n } from 'vue-i18n';
+
+const { t } = useI18n();
 
 // 注册插件
 Chart.register(zoomPlugin);

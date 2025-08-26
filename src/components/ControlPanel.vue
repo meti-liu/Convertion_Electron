@@ -1,12 +1,15 @@
 <!-- src/components/ControlPanel.vue -->
 <template>
   <div class="control-panel">
+    <h3>{{ t('controls') }}</h3>
     <slot></slot>
   </div>
 </template>
 
 <script setup>
-// No script needed for this simple container
+import { useI18n } from 'vue-i18n';
+
+const { t } = useI18n();
 </script>
 
 <style scoped>

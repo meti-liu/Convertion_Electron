@@ -15,4 +15,7 @@ contextBridge.exposeInMainWorld('electronAPI',
   onTcpDataReceived: (callback) => ipcRenderer.on('tcp-data-received', callback),
   onFileCopyStatus: (callback) => ipcRenderer.on('file-copy-status', callback),
   onNewLogFile: (callback) => ipcRenderer.on('new-log-file', (event, ...args) => callback(...args)),
+  // Locale related
+  setLocale: (locale) => ipcRenderer.send('set-locale', locale),
+  onSetLocale: (callback) => ipcRenderer.on('set-locale', (event, ...args) => callback(...args)),
 });

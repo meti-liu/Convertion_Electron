@@ -1,7 +1,8 @@
 <!-- src/App.vue -->
 <template>
   <div id="app-container">
-    <h1 class="title">Jig & Log Viewer</h1>
+    <LanguageSwitcher />
+    <h1 class="title">{{ t('app_title') }}</h1>
     <!-- Main Content Area -->
     <div class="main-content">
       <!-- Controls are now the first column -->
@@ -22,7 +23,7 @@
         :highlightedPinIds="highlightedPinIds"
         :selectedPinId="selectedPinId"
         :pinToZoom="topPinToZoom" 
-        title="Top Jig (Side A)"
+        :title="t('top_jig_side_a')"
       />
       <JigChart
         :chartData="chartDataBot"
@@ -37,10 +38,13 @@
 
 <script setup>
 import { ref, onMounted } from 'vue';
+import { useI18n } from 'vue-i18n';
 import JigChart from './components/JigChart_svg.vue';
 import ControlPanel from './components/ControlPanel.vue';
 import PinInspector from './components/PinInspector.vue';
+import LanguageSwitcher from './components/LanguageSwitcher.vue';
 
+const { t } = useI18n();
 const chartDataTop = ref({ datasets: [] });
 const chartDataBot = ref({ datasets: [] });
 const highlightedPinIds = ref([]);
@@ -118,20 +122,24 @@ function updateChartData(result) {
 onMounted(() => {
   console.log('[App.vue] Component is mounted. Setting up listeners.');
 
-  // Listen for the auto-loaded jig data
-  window.electronAPI.onJigDataLoaded((data) => {
-    console.log('[App.vue] Received jig-data-loaded event. Data:', data);
-    updateChartData(data);
-  });
+  if (window.electronAPI) {
+    // Listen for the auto-loaded jig data
+    window.electronAPI.onJigDataLoaded((data) => {
+      console.log('[App.vue] Received jig-data-loaded event. Data:', data);
+      updateChartData(data);
+    });
 
-  // Listen for the auto-loaded failure log data
-  window.electronAPI.onFailDataLoaded((data) => {
-    console.log('[App.vue] Received fail-data-loaded event. Data:', data);
-    fail_data.value = data;
-    // Extract all failed pin IDs from all logs
-    const allFailedPins = data.flatMap(log => log.failedPins);
-    failedPins.value = [...new Set(allFailedPins)]; // Store unique pin IDs
-  });
+    // Listen for the auto-loaded failure log data
+    window.electronAPI.onFailDataLoaded((data) => {
+      console.log('[App.vue] Received fail-data-loaded event. Data:', data);
+      fail_data.value = data;
+      // Extract all failed pin IDs from all logs
+      const allFailedPins = data.flatMap(log => log.failedPins);
+      failedPins.value = [...new Set(allFailedPins)]; // Store unique pin IDs
+    });
+  } else {
+    console.error('[App.vue] electronAPI is not available on mount.');
+  }
 });
 
 function handleHighlightPins(pinIds) {

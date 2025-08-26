@@ -50,7 +50,7 @@
 
     <!-- Toolbar with Icons -->
     <div class="zoom-controls">
-      <button @click="setMode('pan')" :class="{ 'active-mode': mode === 'pan' }" title="Pan Mode">
+      <button @click="setMode('pan')" :class="{ 'active-mode': mode === 'pan' }" :title="t('pan_mode')">
         <!-- New Pan Icon (Move) -->
         <svg class="icon" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
             <polyline points="5 9 2 12 5 15"></polyline>
@@ -61,26 +61,26 @@
             <line x1="12" y1="2" x2="12" y2="22"></line>
         </svg>
       </button>
-      <button @click="setMode('zoom')" :class="{ 'active-mode': mode === 'zoom' }" title="Zoom Mode">
+      <button @click="setMode('zoom')" :class="{ 'active-mode': mode === 'zoom' }" :title="t('zoom_mode')">
         <!-- New Zoom Icon -->
         <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="feather feather-zoom-in"><circle cx="11" cy="11" r="8"></circle><line x1="23" y1="23" x2="16.65" y2="16.65"></line><line x1="11" y1="8" x2="11" y2="14"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>
       </button>
       <span class="separator">|</span>
-      <button @click="undo" :disabled="history.length <= 1" title="Undo">
+      <button @click="undo" :disabled="history.length <= 1" :title="t('undo')">
         <!-- Undo Icon -->
         <svg class="icon" viewBox="0 0 24 24"><path d="M12.5 8c-2.65 0-5.05.99-6.9 2.6L2 7v9h9l-3.62-3.62c1.39-1.16 3.16-1.88 5.12-1.88 3.54 0 6.55 2.31 7.6 5.5l2.37-.78C20.36 11.23 16.72 8 12.5 8z"/></svg>
       </button>
-      <button @click="redo" :disabled="forward.length === 0" title="Redo">
+      <button @click="redo" :disabled="forward.length === 0" :title="t('redo')">
         <!-- Redo Icon -->
         <svg class="icon" viewBox="0 0 24 24"><path d="M18.4 10.6C16.55 8.99 14.15 8 11.5 8c-4.22 0-7.86 3.23-9.13 7.28l-2.37.78C1.45 10.31 5.94 6 11.5 6c2.65 0 5.05.99 6.9 2.6L22 5v9h-9l3.4-3.4z"/></svg>
       </button>
-      <button @click="reset" title="Reset View">
+      <button @click="reset" :title="t('reset_view')">
         <!-- New Reset Icon -->
         <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="feather feather-refresh-ccw"><polyline points="1 4 1 10 7 10"></polyline><polyline points="23 20 23 14 17 14"></polyline><path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"></path></svg>
       </button>
       <span class="separator">|</span>
       <div class="zoom-slider-container">
-        <button @click="zoomBy(-1)" title="Zoom Out" class="zoom-button">-</button>
+        <button @click="zoomBy(-1)" :title="t('zoom_out')" class="zoom-button">-</button>
         <input
           type="range"
           min="1"
@@ -89,9 +89,9 @@
           :value="zoomLevel"
           @input="handleSlider"
           class="zoom-slider"
-          title="Zoom Level"
+          :title="t('zoom_level')"
         />
-        <button @click="zoomBy(1)" title="Zoom In" class="zoom-button">+</button>
+        <button @click="zoomBy(1)" :title="t('zoom_in')" class="zoom-button">+</button>
       </div>
     </div>
   </div>
@@ -99,6 +99,9 @@
 
 <script setup>
 import { ref, computed, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
+
+const { t } = useI18n();
 
 const props = defineProps({
   chartData: {

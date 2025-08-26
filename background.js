@@ -3,6 +3,10 @@ const path = require('path');
 const fs = require('fs').promises; // Use promises-based fs
 const sqlite3 = require('sqlite3').verbose();
 const tcp_handler = require('./tcp_handler');
+const i18n = require('./i18n-backend');
+
+// Load locales for the backend
+i18n.loadLocales();
 
 // Initialize DB in the project's root directory
 const dbPath = path.join(__dirname, 'jig_data.db');
@@ -43,10 +47,10 @@ function createWindow() {
 
   const menu = Menu.buildFromTemplate([
     {
-      label: 'View',
+      label: i18n.t('view_menu'), // 'View'
       submenu: [
         {
-          label: 'Toggle Network Monitor',
+          label: i18n.t('toggle_network_monitor'), // 'Toggle Network Monitor'
           click: () => {
             if (networkMonitorWindow) {
               networkMonitorWindow.close();
@@ -63,7 +67,7 @@ function createWindow() {
   ]);
   Menu.setApplicationMenu(menu);
 
-  mainWindow.loadURL('http://localhost:5177');
+  mainWindow.loadURL('http://localhost:5179');
   mainWindow.webContents.openDevTools();
 
   tcp_handler.setWindows(mainWindow, networkMonitorWindow);
@@ -73,7 +77,7 @@ function createNetworkMonitorWindow() {
   networkMonitorWindow = new BrowserWindow({
     width: 800,
     height: 600,
-    title: 'Network Monitor',
+    title: i18n.t('network_monitor_title'), // 'Network Monitor'
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -82,7 +86,8 @@ function createNetworkMonitorWindow() {
   });
 
   // Load the network.html from the Vite dev server
-  networkMonitorWindow.loadURL('http://localhost:5177/network.html');
+  networkMonitorWindow.loadURL('http://localhost:5179/network.html');
+  networkMonitorWindow.webContents.openDevTools();
 
   networkMonitorWindow.on('closed', () => {
     networkMonitorWindow = null;
@@ -122,7 +127,7 @@ app.whenReady().then(() => {
       }
     } catch (error) {
       console.error('[Auto-Load] Error during jig file auto-load:', error);
-      dialog.showErrorBox('Auto-load Error', 'Failed to automatically load jig data from the "doc" directory.');
+      dialog.showErrorBox(i18n.t('auto_load_error'), i18n.t('auto_load_error_message'));
     }
 
     // --- Auto-load and process log files from 'doc_test' directory ---
@@ -151,11 +156,43 @@ app.whenReady().then(() => {
   });
 });
 
+ipcMain.on('set-locale', (event, locale) => {
+  i18n.setLocale(locale);
+
+  // Forward the locale to the network monitor window if it exists
+  if (networkMonitorWindow) {
+    networkMonitorWindow.webContents.send('set-locale', locale);
+  }
+
+  // Re-create the menu to apply the new language
+  const menu = Menu.buildFromTemplate([
+    {
+      label: i18n.t('view_menu'),
+      submenu: [
+        {
+          label: i18n.t('toggle_network_monitor'),
+          click: () => {
+            if (networkMonitorWindow) {
+              networkMonitorWindow.close();
+            } else {
+              createNetworkMonitorWindow();
+            }
+          }
+        },
+        { type: 'separator' },
+        { role: 'reload' },
+        { role: 'toggledevtools' }
+      ]
+    }
+  ]);
+  Menu.setApplicationMenu(menu);
+});
+
 ipcMain.handle('process-files', async () => {
   const { canceled, filePaths } = await dialog.showOpenDialog({
     properties: ['openFile', 'multiSelections'],
     filters: [
-        { name: 'Jig Files', extensions: ['rut', 'adr'] }
+        { name: i18n.t('jig_files'), extensions: ['rut', 'adr'] }
     ],
   });
 
@@ -167,7 +204,7 @@ ipcMain.handle('process-files', async () => {
   const adrFile = filePaths.find(p => p.toLowerCase().endsWith('.adr'));
 
   if (!adrFile || rutFiles.length === 0) {
-    dialog.showErrorBox('File Selection Error', 'You must select at least one .RUT file and one .ADR file.');
+    dialog.showErrorBox(i18n.t('file_selection_error'), i18n.t('file_selection_error_message'));
     return null;
   }
   
@@ -180,7 +217,7 @@ ipcMain.handle('read-csv-files', async () => {
   const { canceled, filePaths } = await dialog.showOpenDialog({
     properties: ['openFile', 'multiSelections'],
     filters: [
-      { name: 'CSV Files', extensions: ['csv', 'txt'] } // Allow CSV and TXT files
+      { name: i18n.t('csv_files'), extensions: ['csv', 'txt'] } // Allow CSV and TXT files
     ],
   });
 
@@ -201,7 +238,7 @@ ipcMain.handle('read-csv-files', async () => {
     return files;
   } catch (error) {
     console.error('Error reading CSV files:', error);
-    dialog.showErrorBox('File Read Error', 'An error occurred while reading the selected files.');
+    dialog.showErrorBox(i18n.t('file_read_error'), i18n.t('file_read_error_message'));
     return null;
   }
 });
@@ -209,9 +246,9 @@ ipcMain.handle('read-csv-files', async () => {
 // IPC handler to process and pair failure logs
 ipcMain.handle('process-fail-logs', async () => {
   const { canceled, filePaths } = await dialog.showOpenDialog(mainWindow, {
-    title: 'Select Fail Logs (NGLog and TestResult)',
+    title: i18n.t('select_fail_logs_title'),
     properties: ['openFile', 'multiSelections'],
-    filters: [{ name: 'Log Files', extensions: ['csv', 'txt'] }],
+    filters: [{ name: i18n.t('log_files_label'), extensions: ['csv', 'txt'] }],
   });
 
   if (canceled || !filePaths || filePaths.length === 0) {
@@ -290,7 +327,7 @@ async function processFailLogs(filePaths) {
 
       } catch (error) {
         console.error(`[Debug-PFL] FATAL CRASH processing log pair for ${timestamp}:`, error);
-        dialog.showErrorBox('Processing Error', `An error occurred while processing logs for ${timestamp}:\n\n${error.message}`);
+        dialog.showErrorBox(i18n.t('processing_error'), i18n.t('processing_error_message', { timestamp, message: error.message }));
       }
     }
   }
@@ -320,13 +357,13 @@ async function processJigFiles(rutFiles, adrFile) {
     pyProcess.on('close', (code) => {
       if (code !== 0) {
         console.error(`Python stderr: ${stderr}`);
-        dialog.showErrorBox('Python Script Error', stderr);
+        dialog.showErrorBox(i18n.t('python_script_error'), stderr);
         return reject(new Error(`Python script exited with code ${code}`));
       }
       try {
         resolve(JSON.parse(stdout));
       } catch (e) {
-        dialog.showErrorBox('JSON Parse Error', 'Failed to parse JSON from Python script.');
+        dialog.showErrorBox(i18n.t('json_parse_error'), i18n.t('json_parse_error_message'));
         reject(new Error('Failed to parse JSON from Python script.'));
       }
     });
