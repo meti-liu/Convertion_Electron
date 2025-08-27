@@ -1,7 +1,0 @@
-"Date","Lot","Serial","Dut","BlockX","BlockY","Item","Pin1","Pin2","No.","Point","Result","Meas","Error"
-2025/07/01 18:50:30,1,4,1,1,1,OPEN,7,8,,"7       - 8",>100k,100000.01,
-2025/07/01 18:50:30,1,4,1,1,1,OPEN,9,10,,"9       - 10",>100k,100000.01,
-2025/07/01 18:50:30,1,4,1,1,1,OPEN,11,12,,"11      - 12",>100k,100000.01,
-2025/07/01 18:50:30,1,4,1,1,1,SILVER,4,6,1," -F4,S3+F6,S5",[contact no check],,[contact no check]
-2025/07/01 18:50:30,1,4,1,1,1,SILVER,16,18,2," -F16,S15+F18,S17",[contact no check],,[contact no check]
-2025/07/01 18:50:30,1,4,1,1,1,SILVER,39,42,3," -F39,S40+F42,S41",[contact no check],,[contact no check]
