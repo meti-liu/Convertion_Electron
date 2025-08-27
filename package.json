@@ -6,7 +6,28 @@
   "scripts": {
     "start": "npm run dev",
     "dev": "concurrently \"vite\" \"electron .\"",
-    "build": "vite build"
+    "build": "vite build",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder"
+  },
+  "build": {
+    "appId": "com.electron.jig-viewer",
+    "productName": "JIG Viewer",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "app/**/*",
+      "data/**/*",
+      "test/**/*",
+      "node_modules/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "app/python",
+        "to": "python"
+      }
+    ]
   },
   "keywords": [],
   "author": "",
@@ -25,6 +46,8 @@
     "@vitejs/plugin-vue": "^6.0.1",
     "concurrently": "^9.2.0",
     "electron": "^28.0.0",
+    "electron-builder": "^26.0.12",
+    "electron-rebuild": "^3.2.9",
     "vite": "^7.1.2",
     "wait-on": "^8.0.4"
   }

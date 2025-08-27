@@ -9,8 +9,9 @@ let mainWindow;
 let networkMonitorWindow = null;
 let currentLocale;
 
-// Initialize DB in the data directory
-const dbPath = path.join(__dirname, '../../data/jig_data.db');
+// Initialize DB in the userData directory (在打包环境中更可靠)
+const dbPath = path.join(app.getPath('userData'), 'jig_data.db');
+console.log(`[Database] Using database path: ${dbPath}`);
 const db = new sqlite3.Database(dbPath, (err) => {
   if (err) {
     console.error('Database opening error: ', err);
@@ -125,8 +126,13 @@ async function main() {
 
   await createWindow();
 
-  // --- Auto-load and process .rut and .adr files from 'test/fixtures/rut' directory ---
-  const docDir = path.join(__dirname, '../../test/fixtures/rut');
+  // --- Auto-load and process .rut and .adr files from doc directory ---
+  // 使用app.getAppPath()获取应用根目录，这在开发和生产环境都有效
+  const appRootPath = app.getAppPath();
+  console.log(`[Auto-Load] App root path: ${appRootPath}`);
+  
+  // 首先尝试从doc目录加载文件
+  const docDir = path.join(appRootPath, 'doc');
   try {
     console.log(`[Auto-Load] Checking for jig files in: ${docDir}`);
     const files = await fs.readdir(docDir);
@@ -151,8 +157,9 @@ async function main() {
     dialog.showErrorBox(i18n.t('auto_load_error'), i18n.t('auto_load_error_message'));
   }
 
-  // --- Auto-load and process log files from 'test/fixtures/logs' directory ---
-  const docTestDir = path.join(__dirname, '../../test/fixtures/logs');
+  // --- Auto-load and process log files from doc directory ---
+  // 使用相同的doc目录加载日志文件
+  const docTestDir = path.join(appRootPath, 'doc');
   try {
     console.log(`[Debug] 1. Starting auto-load for fail logs from: ${docTestDir}`);
     const files = await fs.readdir(docTestDir);
@@ -360,7 +367,15 @@ async function processFailLogs(filePaths) {
 
 // Function to process .rut and .adr files
 async function processJigFiles(rutFiles, adrFile) {
-  const scriptPath = path.join(__dirname, '../../app/python/json_script.py');
+  // 在开发环境和打包环境中都能正确找到Python脚本
+  let scriptPath;
+  if (app.isPackaged) {
+    // 打包环境下，Python脚本位于resources/python目录
+    scriptPath = path.join(process.resourcesPath, 'python/json_script.py');
+  } else {
+    // 开发环境下，Python脚本位于app/python目录
+    scriptPath = path.join(__dirname, '../../app/python/json_script.py');
+  }
   const scriptArgs = [...rutFiles, adrFile];
 
   return new Promise((resolve, reject) => {
@@ -395,7 +410,16 @@ async function processJigFiles(rutFiles, adrFile) {
 
 function runFailParser(filePath) {
   return new Promise((resolve, reject) => {
-    const pythonProcess = spawn('python', [path.join(__dirname, '../../app/python/parse_fails.py'), filePath]);
+    // 在开发环境和打包环境中都能正确找到Python脚本
+    let scriptPath;
+    if (app.isPackaged) {
+      // 打包环境下，Python脚本位于resources/python目录
+      scriptPath = path.join(process.resourcesPath, 'python/parse_fails.py');
+    } else {
+      // 开发环境下，Python脚本位于app/python目录
+      scriptPath = path.join(__dirname, '../../app/python/parse_fails.py');
+    }
+    const pythonProcess = spawn('python', [scriptPath, filePath]);
 
     let stdout = '';
     let stderr = '';
