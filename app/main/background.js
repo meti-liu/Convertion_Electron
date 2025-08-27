@@ -1,7 +1,7 @@
 const { app, BrowserWindow, ipcMain, dialog, Menu } = require('electron');
 const path = require('path');
 const fs = require('fs').promises; // Use promises-based fs
-const sqlite3 = require('sqlite3').verbose();
+const Database = require('better-sqlite3');
 const tcp_handler = require('./tcp_handler');
 const i18n = require('./i18n-backend.js');
 
@@ -11,25 +11,21 @@ let currentLocale;
 
 // Initialize DB in the data directory
 const dbPath = path.join(__dirname, '../../data/jig_data.db');
-const db = new sqlite3.Database(dbPath, (err) => {
-  if (err) {
-    console.error('Database opening error: ', err);
-  } else {
-    console.log(`Database opened successfully at ${dbPath}`);
-    // Create table if it doesn't exist
-    db.run(`CREATE TABLE IF NOT EXISTS failures (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      pin_number INTEGER NOT NULL,
-      error_type TEXT,
-      log_file TEXT NOT NULL,
-      timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-    )`, (err) => {
-      if (err) {
-        console.error('Table creation error: ', err);
-      }
-    });
-  }
-});
+let db;
+try {
+  db = new Database(dbPath);
+  console.log(`Database opened successfully at ${dbPath}`);
+  // Create table if it doesn't exist
+  db.exec(`CREATE TABLE IF NOT EXISTS failures (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    pin_number INTEGER NOT NULL,
+    error_type TEXT,
+    log_file TEXT NOT NULL,
+    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+  )`);
+} catch (err) {
+  console.error('Database opening error: ', err);
+}
 
 const { spawn } = require('child_process');
 
@@ -335,9 +331,7 @@ async function processFailLogs(filePaths) {
           }
           stmt.run(item.pin, item.error_type, path.basename(pair.csv));
         }
-        console.log('[Debug-PFL] 7c. Finalizing statement...');
-        stmt.finalize();
-        console.log('[Debug-PFL] 7d. Statement finalized.');
+        console.log('[Debug-PFL] 7d. Statement executed.');
 
         // d. Aggregate results for the frontend
         processedLogs.push({
@@ -360,11 +354,31 @@ async function processFailLogs(filePaths) {
 
 // Function to process .rut and .adr files
 async function processJigFiles(rutFiles, adrFile) {
-  const scriptPath = path.join(__dirname, '../../app/python/json_script.py');
-  const scriptArgs = [...rutFiles, adrFile];
+  // 确定Python脚本的路径 - 开发环境和生产环境路径不同
+  let scriptPath;
+  let execCommand;
+  
+  if (process.env.NODE_ENV === 'development') {
+    // 开发环境：直接使用Python脚本
+    scriptPath = path.join(__dirname, '../../app/python/json_script.py');
+    execCommand = 'python';
+  } else {
+    // 生产环境：使用打包后的可执行文件
+    scriptPath = path.join(process.resourcesPath, 'python', 'json_script');
+    if (process.platform === 'win32') {
+      scriptPath += '.exe';
+    }
+    execCommand = scriptPath;
+    scriptPath = '';
+  }
+
+  const scriptArgs = process.env.NODE_ENV === 'development' ? [scriptPath, ...rutFiles, adrFile] : [...rutFiles, adrFile];
 
   return new Promise((resolve, reject) => {
-    const pyProcess = spawn('python', [scriptPath, ...scriptArgs]);
+    console.log(`Executing: ${execCommand} ${scriptArgs.join(' ')}`);
+    const pyProcess = process.env.NODE_ENV === 'development' 
+      ? spawn(execCommand, scriptArgs)
+      : spawn(execCommand, scriptArgs);
 
     let stdout = '';
     let stderr = '';
@@ -395,7 +409,30 @@ async function processJigFiles(rutFiles, adrFile) {
 
 function runFailParser(filePath) {
   return new Promise((resolve, reject) => {
-    const pythonProcess = spawn('python', [path.join(__dirname, '../../app/python/parse_fails.py'), filePath]);
+    // 确定Python脚本的路径 - 开发环境和生产环境路径不同
+    let scriptPath;
+    let execCommand;
+    
+    if (process.env.NODE_ENV === 'development') {
+      // 开发环境：直接使用Python脚本
+      scriptPath = path.join(__dirname, '../../app/python/parse_fails.py');
+      execCommand = 'python';
+    } else {
+      // 生产环境：使用打包后的可执行文件
+      scriptPath = path.join(process.resourcesPath, 'python', 'parse_fails');
+      if (process.platform === 'win32') {
+        scriptPath += '.exe';
+      }
+      execCommand = scriptPath;
+      scriptPath = '';
+    }
+
+    const scriptArgs = process.env.NODE_ENV === 'development' ? [scriptPath, filePath] : [filePath];
+    console.log(`Executing fail parser: ${execCommand} ${scriptArgs.join(' ')}`);
+    
+    const pythonProcess = process.env.NODE_ENV === 'development'
+      ? spawn(execCommand, scriptArgs)
+      : spawn(execCommand, scriptArgs);
 
     let stdout = '';
     let stderr = '';
@@ -426,7 +463,7 @@ function runFailParser(filePath) {
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
-    db.close(); // Close the database connection
+    if (db) db.close(); // Close the database connection
     app.quit();
   }
 });
