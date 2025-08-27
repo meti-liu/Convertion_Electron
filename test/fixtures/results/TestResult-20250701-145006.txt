@@ -1,0 +1,15 @@
+==============================
+[Test-1]
+<< BLOCK JUDGE (B) >>
+ O
+<< BLOCK DIVXY [1,1] >>
+[Test-1]
+<< SILVER FAIL >>
+    1:-F1600 ,S1601 +F94446 ,S1602 
+               12.000mohm U_NG
+    2:-F1604 ,S1605 +F1607 ,S1606 
+               12.000mohm U_NG
+    3:-F1608 ,S1609 +F1611 ,S1610 
+               12.000mohm U_NG
+SILVER - FAIL [  3]
+DATE: 01-JUL-2025 14:50

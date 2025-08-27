@@ -11,7 +11,10 @@
 
 Jig Viewer 是一个专为电子制造业设计的高性能桌面应用程序，用于可视化和分析治具（JIG）和针点（ADR）数据。本应用采用 Electron 和 Vue.js 构建，提供接近专业 CAD 软件的交互体验，同时保持轻量级和高响应性。
 
-![应用截图](doc/screenshot.png)
+
+
+
+
 
 ## 核心功能
 
@@ -19,7 +22,7 @@ Jig Viewer 是一个专为电子制造业设计的高性能桌面应用程序，
 - **双图表分离显示**：自动根据文件名（TOP/BOT）将数据分离到两个独立图表
 - **高精度渲染**：精确绘制治具轮廓和针点位置
 - **黑色背景**：专业的暗色主题，减轻视觉疲劳
-
+![主页面展示](img/img2.png)
 ### 2. 高级交互工具
 - **模式切换**：独立的平移（Pan）和缩放（Zoom）模式
 - **框选缩放**：通过拖拽选框实现精确区域放大
@@ -32,14 +35,14 @@ Jig Viewer 是一个专为电子制造业设计的高性能桌面应用程序，
 - **数据库集成**：存储和管理历史错误数据
 - **错误日志浏览**：支持浏览多个错误日志文件，并在界面上显示错误针点列表
 - **错误类型识别**：解析并显示不同类型的错误，便于快速定位问题原因
-
+![异常点高亮显示](img/img3.png)
 ### 4. 网络监控
 - **TCP通信**：与GATS系统实时通信
 - **独立监视器**：专用窗口实时显示通信日志
 - **XML数据处理**：自动解析接收到的XML测试结果数据
 - **文件自动复制**：根据XML中的路径信息自动复制相关测试文件
 - **状态可视化**：直观显示服务器运行状态和连接情况
-
+![TCP通信](img/img4.png)
 ### 5. 国际化支持
 - **多语言界面**：支持中文、英文、日文和繁体中文
 - **动态切换**：运行时无缝切换语言
@@ -66,27 +69,30 @@ Jig Viewer 是一个专为电子制造业设计的高性能桌面应用程序，
 ## 项目架构
 
 本项目采用前后端分离架构，通过 Electron 作为桥梁连接：
-
+![项目结构](img/img1.png)
 ### 1. Python 计算后端
 - **核心文件**: 
-  - `json_script.py`: 处理JIG数据计算
-  - `parse_fails.py`: 解析错误日志文件
+  - `app/python/json_script.py`: 处理JIG数据计算
+  - `app/python/parse_fails.py`: 解析错误日志文件
+  - `app/python/converters/`: 数据转换脚本目录
 - **职责**: 处理所有数据计算，包括坐标变换、交点计算和偏移量应用
 - **输出**: 计算结果以JSON格式输出
 
 ### 2. Electron + Vue 前端
 - **核心文件**: 
-  - `background.js`: 主进程，负责协调通信
-  - `preload.js`: 定义渲染进程与主进程的通信接口
-  - `src/App.vue`: 应用主界面
-  - `src/components/JigChart_svg.vue`: SVG图表组件
-  - `src/components/PinInspector.vue`: 错误针点检查组件
-  - `src/components/NetworkMonitor.vue`: 网络监控组件
-  - `src/components/LanguageSwitcher.vue`: 语言切换组件
+  - `app/main/background.js`: 主进程，负责协调通信
+  - `app/main/preload.js`: 定义渲染进程与主进程的通信接口
+  - `app/renderer/src/App.vue`: 应用主界面
+  - `app/renderer/components/JigChart_svg.vue`: SVG图表组件，负责JIG数据的可视化展示
+  - `app/renderer/components/JigChart.vue`: 基础图表组件，提供图表基础功能
+  - `app/renderer/components/PinInspector.vue`: 错误针点检查组件，用于分析和显示错误针点
+  - `app/renderer/components/NetworkMonitor.vue`: 网络监控组件，用于TCP服务器状态监控
+  - `app/renderer/components/LanguageSwitcher.vue`: 语言切换组件，提供多语言支持
+  - `app/renderer/components/ControlPanel.vue`: 控制面板组件，提供图表操作控制
 - **职责**: 用户交互和数据可视化
 
 ### 3. 网络通信模块
-- **核心文件**: `tcp_handler.js`
+- **核心文件**: `app/main/tcp_handler.js`
 - **职责**: 处理TCP服务器创建、客户端连接管理、XML数据解析和文件复制
 - **输出**: 实时通信状态和数据更新
 
@@ -95,6 +101,60 @@ Jig Viewer 是一个专为电子制造业设计的高性能桌面应用程序，
 2. Electron主进程调用Python脚本处理数据
 3. 处理结果返回给渲染进程
 4. Vue组件渲染可视化图表
+
+## 项目结构
+
+```
+/
+├── app/                    # 应用程序源代码
+│   ├── main/               # Electron主进程代码
+│   │   ├── background.js   # 主进程入口文件
+│   │   ├── preload.js      # 预加载脚本
+│   │   ├── tcp_handler.js  # TCP服务器处理模块
+│   │   └── i18n-backend.js # 国际化后端模块
+│   ├── renderer/           # 渲染进程代码
+│   │   ├── src/            # 源代码
+│   │   │   ├── main.js     # 渲染进程入口文件
+│   │   │   ├── App.vue     # 主应用组件
+│   │   │   ├── network.js  # 网络功能模块
+│   │   │   └── i18n.js     # 国际化配置
+│   │   ├── components/     # Vue组件
+│   │   │   ├── ControlPanel.vue    # 控制面板组件
+│   │   │   ├── JigChart.vue        # JIG图表组件
+│   │   │   ├── JigChart_svg.vue    # SVG图表组件
+│   │   │   ├── LanguageSwitcher.vue # 语言切换组件
+│   │   │   ├── NetworkMonitor.vue  # 网络监控组件
+│   │   │   └── PinInspector.vue    # 错误针点检查组件
+│   │   ├── assets/         # 静态资源
+│   │   ├── locales/        # 语言文件
+│   │   ├── index.html      # 主窗口HTML
+│   │   └── network.html    # 网络设置窗口HTML
+│   └── python/             # Python脚本
+│       ├── parse_fails.py  # 错误日志解析脚本
+│       ├── json_script.py  # JSON处理脚本
+│       └── converters/     # 数据转换脚本
+├── data/                   # 应用数据
+│   ├── jig_data.db         # SQLite数据库
+│   └── test.xml            # 测试数据
+├── docs/                   # 文档
+│   ├── api/                # API文档
+│   ├── user-guide/         # 用户指南
+│   └── dev-guide/          # 开发指南
+├── test/                   # 测试
+│   ├── fixtures/           # 测试数据
+│   │   ├── rut/            # RUT测试文件
+│   │   ├── logs/           # 日志文件
+│   │   └── results/        # 测试结果
+│   └── unit/               # 单元测试
+└── resources/              # 资源文件
+    └── img/                # 图片资源
+```
+
+## 文档
+
+- [API文档](docs/api/README.md) - 详细的API接口说明
+- [用户指南](docs/user-guide/README.md) - 用户使用手册
+- [开发指南](docs/dev-guide/README.md) - 开发者指南
 5. 网络模块接收外部系统数据并处理
 
 ## 安装与运行
