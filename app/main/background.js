@@ -82,7 +82,7 @@ async function createWindow() {
   ]);
   Menu.setApplicationMenu(menu);
 
-  await loadURLWithRetry(mainWindow, 'http://localhost:5177');
+  await loadURLWithRetry(mainWindow, 'http://localhost:5177/app/renderer/index.html');
   mainWindow.webContents.openDevTools();
 
   tcp_handler.setWindows(mainWindow, networkMonitorWindow);
@@ -107,7 +107,7 @@ async function createNetworkMonitorWindow() {
   });
 
   // Load the network.html from the Vite dev server
-  await loadURLWithRetry(networkMonitorWindow, 'http://localhost:5177/network.html');
+  await loadURLWithRetry(networkMonitorWindow, 'http://localhost:5177/app/renderer/network.html');
   networkMonitorWindow.webContents.openDevTools();
 
   networkMonitorWindow.on('closed', () => {

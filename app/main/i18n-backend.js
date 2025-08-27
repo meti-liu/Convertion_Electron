@@ -5,7 +5,7 @@ const locales = {};
 let currentLocale = 'en'; // Initialize with a default value
 
 async function loadLocales() {
-  const localesDir = path.join(__dirname, 'src', 'locales');
+  const localesDir = path.join(__dirname, '..', 'renderer', 'locales');
   try {
     const files = await fs.readdir(localesDir);
     for (const file of files) {

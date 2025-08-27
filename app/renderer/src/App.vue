@@ -1,4 +1,4 @@
-<!-- src/App.vue -->
+<!-- app/renderer/src/App.vue -->
 <template>
   <div id="app-container">
     <LanguageSwitcher />
@@ -39,10 +39,10 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import { useI18n } from 'vue-i18n';
-import JigChart from './components/JigChart_svg.vue';
-import ControlPanel from './components/ControlPanel.vue';
-import PinInspector from './components/PinInspector.vue';
-import LanguageSwitcher from './components/LanguageSwitcher.vue';
+import JigChart from '../components/JigChart_svg.vue';
+import ControlPanel from '../components/ControlPanel.vue';
+import PinInspector from '../components/PinInspector.vue';
+import LanguageSwitcher from '../components/LanguageSwitcher.vue';
 
 const { t } = useI18n();
 const chartDataTop = ref({ datasets: [] });
@@ -196,7 +196,7 @@ function handleSelectPin(pinId) {
 
 <style>
 /* Import the global stylesheet */
-@import './assets/styles.css';
+@import '../assets/styles.css';
 
 /* Scoped styles for App.vue layout can go here if needed in the future */
 </style>

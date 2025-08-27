@@ -7,13 +7,16 @@ export default defineConfig({
   plugins: [vue()],
   server: {
     port: 5177,
+    open: '/app/renderer/index.html'
   },
   build: {
     rollupOptions: {
       input: {
-        main: resolve(__dirname, 'index.html'),
-        network: resolve(__dirname, 'network.html'),
+        main: resolve(__dirname, 'app/renderer/index.html'),
+        network: resolve(__dirname, 'app/renderer/network.html'),
       },
     },
   },
+  root: './',
+  publicDir: 'app/renderer/assets',
 });
