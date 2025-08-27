@@ -19,4 +19,7 @@ contextBridge.exposeInMainWorld('electronAPI',
   setLocale: (locale) => ipcRenderer.send('set-locale', locale),
   onUpdateLocale: (callback) => ipcRenderer.on('update-locale', (_event, value) => callback(value)),
   requestInitialLocale: () => ipcRenderer.send('request-initial-locale'), // For initial language handshake
+  // SVG export related
+  exportSvg: (svgData) => ipcRenderer.send('export-svg', svgData),
+  onExportSvgResult: (callback) => ipcRenderer.on('export-svg-result', (_event, result) => callback(result))
 });

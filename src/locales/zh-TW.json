@@ -54,5 +54,6 @@
   "processing_error_message": "處理 {timestamp} 的日誌時發生錯誤：\n\n{message}",
   "python_script_error": "Python 腳本錯誤",
   "json_parse_error": "JSON 解析錯誤",
-  "json_parse_error_message": "從 Python 腳本解析 JSON 失敗。"
+  "json_parse_error_message": "從 Python 腳本解析 JSON 失敗。",
+  "export_svg": "匯出 SVG"
 }

@@ -54,5 +54,6 @@
   "json_parse_error": "JSON 解析错误",
   "json_parse_error_message": "从 Python 脚本解析 JSON 失败。",
   "top_jig_side_a": "顶部夹具 (A面)",
-  "bottom_jig_side_b": "底部夹具 (B面)"
+  "bottom_jig_side_b": "底部夹具 (B面)",
+  "export_svg": "导出 SVG"
 }

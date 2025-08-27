@@ -78,6 +78,10 @@
         <!-- New Reset Icon -->
         <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="feather feather-refresh-ccw"><polyline points="1 4 1 10 7 10"></polyline><polyline points="23 20 23 14 17 14"></polyline><path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"></path></svg>
       </button>
+      <button @click="exportSvg" :title="t('export_svg') || '导出SVG'">
+        <!-- Export Icon -->
+        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="feather feather-download"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+      </button>
       <span class="separator">|</span>
       <div class="zoom-slider-container">
         <button @click="zoomBy(-1)" :title="t('zoom_out')" class="zoom-button">-</button>
@@ -98,8 +102,9 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { ElMessage } from 'element-plus';
 
 const { t } = useI18n();
 
@@ -418,6 +423,100 @@ function updateZoomSlider() {
   const level = Math.log(scale.value) / Math.log(1.4) + 1;
   zoomLevel.value = Math.max(1, Math.min(20, level));
 }
+
+// SVG Export functionality
+function exportSvg() {
+  if (!svgRef.value) return;
+  
+  // Create a new SVG element with proper namespace
+  const ns = 'http://www.w3.org/2000/svg';
+  const newSvg = document.createElementNS(ns, 'svg');
+  
+  // Set essential attributes
+  newSvg.setAttribute('xmlns', ns);
+  newSvg.setAttribute('xmlns:xlink', 'http://www.w3.org/1999/xlink');
+  newSvg.setAttribute('version', '1.1');
+  newSvg.setAttribute('width', '800');
+  newSvg.setAttribute('height', '600');
+  
+  // Copy viewBox from original SVG
+  newSvg.setAttribute('viewBox', svgRef.value.getAttribute('viewBox'));
+  
+  // Add black background rectangle
+  const backgroundRect = document.createElementNS(ns, 'rect');
+  backgroundRect.setAttribute('width', '100%');
+  backgroundRect.setAttribute('height', '100%');
+  backgroundRect.setAttribute('fill', '#000000');
+  newSvg.appendChild(backgroundRect);
+  
+  // Create a style element for the SVG
+  const styleElement = document.createElementNS(ns, 'style');
+  styleElement.setAttribute('type', 'text/css');
+  
+  // Add essential styles
+  styleElement.textContent = `
+    .drag-rect {
+      fill: rgba(52, 152, 219, 0.1);
+      stroke: rgba(52, 152, 219, 0.7);
+      stroke-width: 0.5;
+      stroke-dasharray: 2 2;
+    }
+    path {
+      fill: none;
+    }
+    svg {
+      background-color: #000000;
+    }
+  `;
+  
+  newSvg.appendChild(styleElement);
+  
+  // Copy the transformed group with all content
+  const mainGroup = svgRef.value.querySelector('g');
+  if (mainGroup) {
+    const clonedGroup = mainGroup.cloneNode(true);
+    newSvg.appendChild(clonedGroup);
+  }
+  
+  // Get the SVG as a string
+  const serializer = new XMLSerializer();
+  let svgString = serializer.serializeToString(newSvg);
+  
+  // Clean up any non-standard attributes that might cause issues
+  svgString = svgString.replace(/\sclass="[^"]*"/g, '');
+  
+  // Add XML declaration
+  const svgData = '<?xml version="1.0" encoding="UTF-8" standalone="no"?>\n' + svgString;
+  
+  // Send to main process for saving
+  if (window.electronAPI) {
+    window.electronAPI.exportSvg(svgData);
+  }
+}
+
+// Handle export result notifications
+let exportResultHandler = null;
+
+onMounted(() => {
+  if (window.electronAPI) {
+    exportResultHandler = (result) => {
+      if (result.success) {
+        ElMessage.success(result.message || t('export_success') || '导出成功');
+      } else {
+        ElMessage.error(result.message || t('export_error') || '导出失败');
+      }
+    };
+    window.electronAPI.onExportSvgResult(exportResultHandler);
+  }
+});
+
+onUnmounted(() => {
+  // Clean up event listeners
+  if (window.electronAPI && exportResultHandler) {
+    // Note: Electron doesn't provide a direct way to remove listeners from preload
+    // In a production app, you might want to implement a more robust solution
+  }
+});
 </script>
 
 <style scoped>
@@ -446,13 +545,16 @@ function updateZoomSlider() {
 }
 
 .zoom-controls {
-  display: flex;
+  display: flex !important;
   align-items: center;
   justify-content: center;
   padding: 8px;
   background-color: #333; /* Changed to dark mode */
   border-top: 1px solid #555; /* Changed to dark mode */
   flex-shrink: 0;
+  visibility: visible !important;
+  opacity: 1 !important;
+  z-index: 100;
 }
 
 .zoom-controls .title {

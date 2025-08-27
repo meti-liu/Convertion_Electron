@@ -441,3 +441,37 @@ ipcMain.on('tcp-start', (event, options) => {
 ipcMain.on('tcp-stop', () => {
   tcp_handler.stopServer();
 });
+
+// IPC handler for exporting SVG
+ipcMain.on('export-svg', async (event, svgData) => {
+  try {
+    const { canceled, filePath } = await dialog.showSaveDialog({
+      title: i18n.t('export_svg') || 'Export SVG',
+      defaultPath: 'jig_chart.svg',
+      filters: [{ name: 'SVG Files', extensions: ['svg'] }]
+    });
+
+    if (canceled || !filePath) {
+      return;
+    }
+
+    // Ensure SVG data has proper XML declaration and SVG namespace
+    if (!svgData.includes('<?xml version="1.0"') || !svgData.includes('xmlns="http://www.w3.org/2000/svg"')) {
+      console.warn('SVG data missing proper XML declaration or namespace');
+      // Add them if missing
+      if (!svgData.includes('<?xml version="1.0"')) {
+        svgData = '<?xml version="1.0" encoding="UTF-8" standalone="no"?>\n' + svgData;
+      }
+      if (!svgData.includes('xmlns="http://www.w3.org/2000/svg"')) {
+        svgData = svgData.replace('<svg', '<svg xmlns="http://www.w3.org/2000/svg"');
+      }
+    }
+
+    await fs.writeFile(filePath, svgData);
+    console.log(`SVG exported successfully to ${filePath}`);
+    mainWindow.webContents.send('export-svg-result', { success: true, message: i18n.t('export_success') || 'SVG exported successfully' });
+  } catch (error) {
+    console.error('Error exporting SVG:', error);
+    mainWindow.webContents.send('export-svg-result', { success: false, message: i18n.t('export_error') || 'Failed to export SVG' });
+  }
+});

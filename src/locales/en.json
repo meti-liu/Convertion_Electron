@@ -54,5 +54,6 @@
   "processing_error_message": "An error occurred while processing logs for {timestamp}:\n\n{message}",
   "python_script_error": "Python Script Error",
   "json_parse_error": "JSON Parse Error",
-  "json_parse_error_message": "Failed to parse JSON from Python script."
+  "json_parse_error_message": "Failed to parse JSON from Python script.",
+  "export_svg": "Export SVG"
 }

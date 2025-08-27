@@ -102,8 +102,11 @@ body {
   align-items: center;
   justify-content: center;
   padding: 8px;
-  background-color: #f9fafb;
-  border-top: 1px solid var(--border-color);
+  background-color: #333;
+  border-top: 1px solid #555;
+  visibility: visible !important;
+  opacity: 1 !important;
+  z-index: 100;
   flex-shrink: 0;
 }
 
