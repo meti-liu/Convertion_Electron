@@ -126,60 +126,122 @@ async function main() {
 
   await createWindow();
 
-  // --- Auto-load and process .rut and .adr files from doc directory ---
+  // --- Auto-load and process .rut and .adr files ---
   // 使用app.getAppPath()获取应用根目录，这在开发和生产环境都有效
   const appRootPath = app.getAppPath();
   console.log(`[Auto-Load] App root path: ${appRootPath}`);
   
-  // 首先尝试从doc目录加载文件
+  // 首先尝试从test/fixtures/rut目录加载文件
+  const testFixturesDir = path.join(appRootPath, 'test', 'fixtures', 'rut');
   const docDir = path.join(appRootPath, 'doc');
+  let jigDataLoaded = false;
+  
+  // 先尝试从test/fixtures/rut目录加载
   try {
-    console.log(`[Auto-Load] Checking for jig files in: ${docDir}`);
-    const files = await fs.readdir(docDir);
+    console.log(`[Auto-Load] Checking for jig files in: ${testFixturesDir}`);
+    const files = await fs.readdir(testFixturesDir);
 
     const rutFiles = files
       .filter(file => file.toLowerCase().endsWith('.rut'))
-      .map(file => path.join(docDir, file));
+      .map(file => path.join(testFixturesDir, file));
     const adrFile = files
-      .map(file => path.join(docDir, file))
+      .map(file => path.join(testFixturesDir, file))
       .find(file => file.toLowerCase().endsWith('.adr'));
 
     if (rutFiles.length > 0 && adrFile) {
-      console.log(`[Auto-Load] Found ${rutFiles.length} .rut and 1 .adr file. Processing...`);
+      console.log(`[Auto-Load] Found ${rutFiles.length} .rut and 1 .adr file in test/fixtures/rut. Processing...`);
       const jigData = await processJigFiles(rutFiles, adrFile);
-      console.log('[Auto-Load] Jig data processed. Sending to renderer...');
+      console.log('[Auto-Load] Jig data processed from test/fixtures/rut. Sending to renderer...');
       mainWindow.webContents.send('jig-data-loaded', jigData);
+      jigDataLoaded = true;
     } else {
-      console.log('[Auto-Load] Not enough .rut or .adr files found in /doc to proceed.');
+      console.log('[Auto-Load] Not enough .rut or .adr files found in test/fixtures/rut to proceed.');
     }
   } catch (error) {
-    console.error('[Auto-Load] Error during jig file auto-load:', error);
-    dialog.showErrorBox(i18n.t('auto_load_error'), i18n.t('auto_load_error_message'));
+    console.log('[Auto-Load] Could not load from test/fixtures/rut:', error.message);
+  }
+  
+  // 如果从test/fixtures/rut加载失败，尝试从doc目录加载
+  if (!jigDataLoaded) {
+    try {
+      console.log(`[Auto-Load] Checking for jig files in: ${docDir}`);
+      const files = await fs.readdir(docDir);
+
+      const rutFiles = files
+        .filter(file => file.toLowerCase().endsWith('.rut'))
+        .map(file => path.join(docDir, file));
+      const adrFile = files
+        .map(file => path.join(docDir, file))
+        .find(file => file.toLowerCase().endsWith('.adr'));
+
+      if (rutFiles.length > 0 && adrFile) {
+        console.log(`[Auto-Load] Found ${rutFiles.length} .rut and 1 .adr file in doc. Processing...`);
+        const jigData = await processJigFiles(rutFiles, adrFile);
+        console.log('[Auto-Load] Jig data processed from doc. Sending to renderer...');
+        mainWindow.webContents.send('jig-data-loaded', jigData);
+      } else {
+        console.log('[Auto-Load] Not enough .rut or .adr files found in /doc to proceed.');
+        dialog.showErrorBox(i18n.t('auto_load_error'), i18n.t('auto_load_error_message'));
+      }
+    } catch (error) {
+      console.error('[Auto-Load] Error during jig file auto-load from doc:', error);
+      dialog.showErrorBox(i18n.t('auto_load_error'), i18n.t('auto_load_error_message'));
+    }
   }
 
-  // --- Auto-load and process log files from doc directory ---
-  // 使用相同的doc目录加载日志文件
+  // --- Auto-load and process log files ---
+  // 先尝试从test/fixtures/logs目录加载日志文件，如果失败再从doc目录加载
+  const testFixturesLogsDir = path.join(appRootPath, 'test', 'fixtures', 'logs');
   const docTestDir = path.join(appRootPath, 'doc');
+  let logsLoaded = false;
+  
+  // 先尝试从test/fixtures/logs目录加载
   try {
-    console.log(`[Debug] 1. Starting auto-load for fail logs from: ${docTestDir}`);
-    const files = await fs.readdir(docTestDir);
-    console.log(`[Debug] 2. Found ${files.length} total files in doc_test.`);
+    console.log(`[Debug] 1. Starting auto-load for fail logs from: ${testFixturesLogsDir}`);
+    const files = await fs.readdir(testFixturesLogsDir);
+    console.log(`[Debug] 2. Found ${files.length} total files in test/fixtures/logs.`);
     const logFiles = files
       .filter(f => f.toLowerCase().endsWith('.csv') || f.toLowerCase().endsWith('.txt'))
-      .map(f => path.join(docTestDir, f));
+      .map(f => path.join(testFixturesLogsDir, f));
     console.log(`[Debug] 3. Filtered ${logFiles.length} log files (.csv, .txt).`);
 
     if (logFiles.length > 0) {
-      console.log(`[Debug] 4. Calling processFailLogs with ${logFiles.length} files.`);
+      console.log(`[Debug] 4. Calling processFailLogs with ${logFiles.length} files from test/fixtures/logs.`);
       const failData = await processFailLogs(logFiles);
       console.log(`[Debug] 8. processFailLogs finished. Sending ${failData.length} items to renderer.`);
       mainWindow.webContents.send('fail-data-loaded', failData);
       console.log('[Debug] 9. Sent fail-data-loaded IPC message.');
+      logsLoaded = true;
     } else {
-      console.log('[Auto-Load] No log files found in /doc_test.');
+      console.log('[Auto-Load] No log files found in test/fixtures/logs.');
     }
   } catch (error) {
-    console.error('[Auto-Load] FATAL CRASH during fail log auto-load:', error);
+    console.log('[Auto-Load] Could not load logs from test/fixtures/logs:', error.message);
+  }
+  
+  // 如果从test/fixtures/logs加载失败，尝试从doc目录加载
+  if (!logsLoaded) {
+    try {
+      console.log(`[Debug] 1. Starting auto-load for fail logs from: ${docTestDir}`);
+      const files = await fs.readdir(docTestDir);
+      console.log(`[Debug] 2. Found ${files.length} total files in doc.`);
+      const logFiles = files
+        .filter(f => f.toLowerCase().endsWith('.csv') || f.toLowerCase().endsWith('.txt'))
+        .map(f => path.join(docTestDir, f));
+      console.log(`[Debug] 3. Filtered ${logFiles.length} log files (.csv, .txt).`);
+
+      if (logFiles.length > 0) {
+        console.log(`[Debug] 4. Calling processFailLogs with ${logFiles.length} files from doc.`);
+        const failData = await processFailLogs(logFiles);
+        console.log(`[Debug] 8. processFailLogs finished. Sending ${failData.length} items to renderer.`);
+        mainWindow.webContents.send('fail-data-loaded', failData);
+        console.log('[Debug] 9. Sent fail-data-loaded IPC message.');
+      } else {
+        console.log('[Auto-Load] No log files found in doc directory.');
+      }
+    } catch (error) {
+      console.error('[Auto-Load] FATAL CRASH during fail log auto-load from doc:', error);
+    }
   }
 }
 
@@ -369,14 +431,64 @@ async function processFailLogs(filePaths) {
 async function processJigFiles(rutFiles, adrFile) {
   // 在开发环境和打包环境中都能正确找到Python脚本
   let scriptPath;
+  let finalAdrFile = adrFile;
+  
   if (app.isPackaged) {
     // 打包环境下，Python脚本位于resources/python目录
-    scriptPath = path.join(process.resourcesPath, 'python/json_script.py');
+    scriptPath = path.join(process.resourcesPath, 'python', 'json_script.py');
+    console.log(`[processJigFiles] Using packaged script path: ${scriptPath}`);
+    
+    // 确保ADR文件存在并可访问
+    try {
+      await fs.access(adrFile);
+      console.log(`[processJigFiles] ADR file exists at: ${adrFile}`);
+    } catch (error) {
+      console.error(`[processJigFiles] Error accessing ADR file: ${error.message}`);
+      
+      // 尝试在resources目录中查找ADR文件
+      const adrFileName = path.basename(adrFile);
+      const resourcesAdrPath = path.join(process.resourcesPath, 'test', 'fixtures', 'rut', adrFileName);
+      
+      try {
+        await fs.access(resourcesAdrPath);
+        console.log(`[processJigFiles] Found ADR file in resources: ${resourcesAdrPath}`);
+        finalAdrFile = resourcesAdrPath;
+      } catch (resourceError) {
+        console.error(`[processJigFiles] ADR file not found in resources: ${resourceError.message}`);
+        
+        // 尝试复制ADR文件到临时目录
+        const tempDir = app.getPath('temp');
+        const tempAdrFile = path.join(tempDir, adrFileName);
+        
+        try {
+          // 如果原始ADR文件存在，复制到临时目录
+          if (await fs.stat(adrFile).catch(() => false)) {
+            await fs.copyFile(adrFile, tempAdrFile);
+            console.log(`[processJigFiles] Copied ADR file to: ${tempAdrFile}`);
+            finalAdrFile = tempAdrFile;
+          } else {
+            console.error(`[processJigFiles] Cannot find ADR file anywhere: ${adrFileName}`);
+            // 创建一个空的ADR文件，以便Python脚本能够继续运行
+            await fs.writeFile(tempAdrFile, '');
+            console.log(`[processJigFiles] Created empty ADR file at: ${tempAdrFile}`);
+            finalAdrFile = tempAdrFile;
+          }
+        } catch (copyError) {
+          console.error(`[processJigFiles] Failed to handle ADR file: ${copyError.message}`);
+        }
+      }
+    }
   } else {
     // 开发环境下，Python脚本位于app/python目录
     scriptPath = path.join(__dirname, '../../app/python/json_script.py');
+    console.log(`[processJigFiles] Using development script path: ${scriptPath}`);
   }
-  const scriptArgs = [...rutFiles, adrFile];
+  
+  const scriptArgs = [...rutFiles, finalAdrFile];
+  console.log(`[processJigFiles] Script path: ${scriptPath}`);
+  console.log(`[processJigFiles] RUT files: ${rutFiles.join(', ')}`);
+  console.log(`[processJigFiles] ADR file: ${finalAdrFile}`);
+  console.log(`[processJigFiles] Current working directory: ${process.cwd()}`);
 
   return new Promise((resolve, reject) => {
     const pyProcess = spawn('python', [scriptPath, ...scriptArgs]);
@@ -385,25 +497,42 @@ async function processJigFiles(rutFiles, adrFile) {
     let stderr = '';
 
     pyProcess.stdout.on('data', (data) => {
-      stdout += data.toString();
+      const dataStr = data.toString();
+      console.log(`[Python stdout] ${dataStr.trim()}`);
+      stdout += dataStr;
     });
 
     pyProcess.stderr.on('data', (data) => {
-      stderr += data.toString();
+      const dataStr = data.toString();
+      console.error(`[Python stderr] ${dataStr.trim()}`);
+      stderr += dataStr;
     });
 
     pyProcess.on('close', (code) => {
+      console.log(`[processJigFiles] Python process exited with code ${code}`);
       if (code !== 0) {
-        console.error(`Python stderr: ${stderr}`);
+        console.error(`[processJigFiles] Python stderr: ${stderr}`);
+        console.error(`[processJigFiles] Python command: python ${scriptPath} ${scriptArgs.join(' ')}`);
         dialog.showErrorBox(i18n.t('python_script_error'), stderr);
         return reject(new Error(`Python script exited with code ${code}`));
       }
       try {
-        resolve(JSON.parse(stdout));
+        console.log(`[processJigFiles] Raw JSON output length: ${stdout.length} characters`);
+        const parsedData = JSON.parse(stdout);
+        console.log(`[processJigFiles] Successfully parsed JSON data with ${parsedData.rut_data.length} RUT files and ADR data: ${!!parsedData.adr_data}`);
+        resolve(parsedData);
       } catch (e) {
+        console.error(`[processJigFiles] Failed to parse JSON: ${e.message}`);
+        console.error(`[processJigFiles] Raw JSON output: ${stdout.substring(0, 200)}...`);
         dialog.showErrorBox(i18n.t('json_parse_error'), i18n.t('json_parse_error_message'));
         reject(new Error('Failed to parse JSON from Python script.'));
       }
+    });
+    
+    pyProcess.on('error', (error) => {
+      console.error(`[processJigFiles] Failed to start Python process: ${error.message}`);
+      dialog.showErrorBox(i18n.t('python_script_error'), error.message);
+      reject(error);
     });
   });
 }
@@ -414,36 +543,57 @@ function runFailParser(filePath) {
     let scriptPath;
     if (app.isPackaged) {
       // 打包环境下，Python脚本位于resources/python目录
-      scriptPath = path.join(process.resourcesPath, 'python/parse_fails.py');
+      scriptPath = path.join(process.resourcesPath, 'python', 'parse_fails.py');
+      console.log(`[runFailParser] Using packaged script path: ${scriptPath}`);
     } else {
       // 开发环境下，Python脚本位于app/python目录
       scriptPath = path.join(__dirname, '../../app/python/parse_fails.py');
+      console.log(`[runFailParser] Using development script path: ${scriptPath}`);
     }
+    
+    console.log(`[runFailParser] Processing file: ${filePath}`);
+    console.log(`[runFailParser] Current working directory: ${process.cwd()}`);
+    
     const pythonProcess = spawn('python', [scriptPath, filePath]);
 
     let stdout = '';
     let stderr = '';
 
     pythonProcess.stdout.on('data', (data) => {
-      stdout += data.toString();
-      console.log(`Python stdout: ${data}`);
+      const dataStr = data.toString();
+      console.log(`[runFailParser] Python stdout: ${dataStr.trim()}`);
+      stdout += dataStr;
     });
 
     pythonProcess.stderr.on('data', (data) => {
-      stderr += data.toString();
-      console.error(`Python stderr: ${data}`);
+      const dataStr = data.toString();
+      console.error(`[runFailParser] Python stderr: ${dataStr.trim()}`);
+      stderr += dataStr;
     });
 
     pythonProcess.on('close', (code) => {
+      console.log(`[runFailParser] Python process exited with code ${code}`);
       if (code === 0) {
         try {
-          resolve(JSON.parse(stdout));
+          console.log(`[runFailParser] Raw JSON output length: ${stdout.length} characters`);
+          const parsedData = JSON.parse(stdout);
+          console.log(`[runFailParser] Successfully parsed JSON data with ${parsedData.length} results`);
+          resolve(parsedData);
         } catch (e) {
-          reject(new Error('Failed to parse Python script output.'));
+          console.error(`[runFailParser] Failed to parse JSON: ${e.message}`);
+          console.error(`[runFailParser] Raw JSON output: ${stdout.substring(0, 200)}...`);
+          reject(new Error(`Failed to parse Python script output: ${e.message}`));
         }
       } else {
+        console.error(`[runFailParser] Python script failed with code ${code}`);
+        console.error(`[runFailParser] Error output: ${stderr}`);
         reject(new Error(`Python script exited with code ${code}: ${stderr}`));
       }
+    });
+    
+    pythonProcess.on('error', (error) => {
+      console.error(`[runFailParser] Failed to start Python process: ${error.message}`);
+      reject(error);
     });
   });
 }

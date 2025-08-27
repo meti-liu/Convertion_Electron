@@ -27,8 +27,8 @@
         <PanelID>123</PanelID>
         <Serial>10</Serial>
         <Result>NG</Result>
-        <Path>C:\Users\liuborui\Desktop\RUT\electron\convertion_electron\doc\NGLog-20250821-153611.csv</Path>
-        <ResultPath>C:\Users\liuborui\Desktop\RUT\electron\convertion_electron\doc\TestResult-20250821-153611.txt</ResultPath>
+        <Path>C:\Users\liuborui\Desktop\RUT\electron\convertion_electron\test\fixtures\logs\NGLog-20250821-153611.csv</Path>
+        <ResultPath>C:\Users\liuborui\Desktop\RUT\electron\convertion_electron\test\fixtures\logs\TestResult-20250821-153611.txt</ResultPath>
     </BlockTestComplete>
     <BlockTestComplete>
         <AutoRunMode>0</AutoRunMode>
@@ -39,8 +39,8 @@
         <PanelID>123</PanelID>
         <Serial>11</Serial>
         <Result>NG</Result>
-        <Path>C:\Users\liuborui\Desktop\RUT\electron\convertion_electron\doc\NGLog-20250630-185115.csv</Path>
-        <ResultPath>C:\Users\liuborui\Desktop\RUT\electron\convertion_electron\doc\TestResult-20250630-185115.txt</ResultPath>
+        <Path>C:\Users\liuborui\Desktop\RUT\electron\convertion_electron\test\fixtures\logs\NGLog-20250630-185115.csv</Path>
+        <ResultPath>C:\Users\liuborui\Desktop\RUT\electron\convertion_electron\test\fixtures\logs\TestResult-20250630-185115.txt</ResultPath>
     </BlockTestComplete>
     <BlockTestComplete>
         <AutoRunMode>0</AutoRunMode>
@@ -51,8 +51,8 @@
         <PanelID>123</PanelID>
         <Serial>12</Serial>
         <Result>NG</Result>
-        <Path>C:\Users\liuborui\Desktop\RUT\electron\convertion_electron\doc\NGLog-20250701-144106.csv</Path>
-        <ResultPath>C:\Users\liuborui\Desktop\RUT\electron\convertion_electron\doc\TestResult-20250701-144106.txt</ResultPath>
+        <Path>C:\Users\liuborui\Desktop\RUT\electron\convertion_electron\test\fixtures\logs\NGLog-20250701-144106.csv</Path>
+        <ResultPath>C:\Users\liuborui\Desktop\RUT\electron\convertion_electron\test\fixtures\logs\TestResult-20250701-144106.txt</ResultPath>
     </BlockTestComplete>
     <BlockTestComplete>
         <AutoRunMode>0</AutoRunMode>
@@ -63,8 +63,8 @@
         <PanelID>123</PanelID>
         <Serial>13</Serial>
         <Result>NG</Result>
-        <Path>C:\Users\liuborui\Desktop\RUT\electron\convertion_electron\doc\NGLog-20250714-120349.csv</Path>
-        <ResultPath>C:\Users\liuborui\Desktop\RUT\electron\convertion_electron\doc\TestResult-20250714-120349.txt</ResultPath>
+        <Path>C:\Users\liuborui\Desktop\RUT\electron\convertion_electron\test\fixtures\logs\NGLog-20250714-120349.csv</Path>
+        <ResultPath>C:\Users\liuborui\Desktop\RUT\electron\convertion_electron\test\fixtures\logs\TestResult-20250714-120349.txt</ResultPath>
     </BlockTestComplete>
     <DisplayJigTool>
         <ShowWindow>Y</ShowWindow>
