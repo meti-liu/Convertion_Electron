@@ -79,11 +79,6 @@
         <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="feather feather-refresh-ccw"><polyline points="1 4 1 10 7 10"></polyline><polyline points="23 20 23 14 17 14"></polyline><path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"></path></svg>
       </button>
       <span class="separator">|</span>
-      <button @click="exportSVG" :title="t('export_svg', 'Export SVG')" style="display: flex !important; visibility: visible !important; opacity: 1 !important;">
-        <!-- Export Icon -->
-        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="feather feather-download"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-      </button>
-      <span class="separator">|</span>
       <div class="zoom-slider-container">
         <button @click="zoomBy(-1)" :title="t('zoom_out')" class="zoom-button">-</button>
         <input
@@ -402,23 +397,6 @@ function redo() {
     history.value.push(nextState);
     applyState(nextState);
   }
-}
-
-function exportSVG() {
-  const svg = svgRef.value;
-  if (!svg) return;
-
-  // Clone the node to avoid modifying the live DOM
-  const svgClone = svg.cloneNode(true);
-
-  // Set the xmlns attribute for proper SVG rendering
-  svgClone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
-
-  // Get the outer HTML of the cloned SVG
-  const svgData = svgClone.outerHTML;
-
-  // Send the SVG data to the main process
-  window.electronAPI.send('export-svg', svgData);
 }
 
 function zoomToPin(pin) {
