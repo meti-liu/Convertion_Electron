@@ -18,14 +18,14 @@
       </div>
 
       <!-- Jig Charts are now direct children of main-content, forming the next columns -->
-      <JigChart
+      <JigChart_svg
         :chartData="chartDataTop"
         :highlightedPinIds="highlightedPinIds"
         :selectedPinId="selectedPinId"
         :pinToZoom="topPinToZoom" 
         :title="t('top_jig_side_a')"
       />
-      <JigChart
+      <JigChart_svg
         :chartData="chartDataBot"
         :highlightedPinIds="highlightedPinIds"
         :selectedPinId="selectedPinId"
@@ -39,7 +39,7 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import { useI18n } from 'vue-i18n';
-import JigChart from './components/JigChart_svg.vue';
+import JigChart_svg from './components/JigChart_svg.vue';
 import ControlPanel from './components/ControlPanel.vue';
 import PinInspector from './components/PinInspector.vue';
 import LanguageSwitcher from './components/LanguageSwitcher.vue';

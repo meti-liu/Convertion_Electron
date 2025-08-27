@@ -441,3 +441,33 @@ ipcMain.on('tcp-start', (event, options) => {
 ipcMain.on('tcp-stop', () => {
   tcp_handler.stopServer();
 });
+
+// IPC handler for exporting SVG
+ipcMain.on('export-svg', async (event, svgData) => {
+  const { canceled, filePath } = await dialog.showSaveDialog(mainWindow, {
+    title: i18n.t('export_svg_title', 'Export SVG Chart'),
+    defaultPath: path.join(__dirname, 'doc', `jig-chart-${Date.now()}.svg`),
+    filters: [
+      { name: 'SVG Files', extensions: ['svg'] },
+      { name: 'All Files', extensions: ['*'] },
+    ],
+  });
+
+  if (!canceled && filePath) {
+    try {
+      await fs.writeFile(filePath, svgData, 'utf-8');
+      console.log(`SVG exported successfully to ${filePath}`);
+      dialog.showMessageBox(mainWindow, {
+        type: 'info',
+        title: i18n.t('export_success_title', 'Export Successful'),
+        message: i18n.t('export_success_message', `Chart saved to ${filePath}`),
+      });
+    } catch (error) {
+      console.error('Failed to export SVG:', error);
+      dialog.showErrorBox(
+        i18n.t('export_error_title', 'Export Error'),
+        i18n.t('export_error_message', `Failed to save the chart: ${error.message}`)
+      );
+    }
+  }
+});

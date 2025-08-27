@@ -105,6 +105,9 @@ body {
   background-color: #f9fafb;
   border-top: 1px solid var(--border-color);
   flex-shrink: 0;
+  visibility: visible !important;
+  opacity: 1 !important;
+  z-index: 100;
 }
 
 .zoom-controls .title {

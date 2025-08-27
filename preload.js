@@ -19,4 +19,11 @@ contextBridge.exposeInMainWorld('electronAPI',
   setLocale: (locale) => ipcRenderer.send('set-locale', locale),
   onUpdateLocale: (callback) => ipcRenderer.on('update-locale', (_event, value) => callback(value)),
   requestInitialLocale: () => ipcRenderer.send('request-initial-locale'), // For initial language handshake
+  send: (channel, data) => {
+    // Whitelist channels
+    let validChannels = ['export-svg'];
+    if (validChannels.includes(channel)) {
+      ipcRenderer.send(channel, data);
+    }
+  }
 });
