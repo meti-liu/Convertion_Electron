@@ -3,15 +3,18 @@ import os
 # Get the absolute path of the directory where the script is located
 script_dir = os.path.dirname(os.path.abspath(__file__))
 
+# Get the path to the test fixtures directory
+fixtures_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(script_dir))), "test", "fixtures", "rut")
+
 # parameters
 # up jig rut files
-input_file_up_upper = os.path.join(script_dir, "doc/G8360-TEST-TOP-JIGUNIT1.rut")
-input_file_up_middle = os.path.join(script_dir, "doc/G8360-TEST-TOP-JIGUNIT2.rut")
-input_file_up_bottom = os.path.join(script_dir, "doc/up-bottom.rut")
+input_file_up_upper = os.path.join(fixtures_dir, "G8360-TEST-TOP-JIGUNIT1.rut")
+input_file_up_middle = os.path.join(fixtures_dir, "G8360-TEST-TOP-JIGUNIT2.rut")
+input_file_up_bottom = os.path.join(fixtures_dir, "up-bottom.rut")
 # down jig rut files
-input_file_down_upper = os.path.join(script_dir, "doc/G8360-TEST-BOT-JIGUNIT1.rut")
-input_file_down_middle = os.path.join(script_dir, "doc/G8360-TEST-BOT-JIGUNIT2.rut")
-input_file_down_bottom = os.path.join(script_dir, "doc/G8360-TEST-BOT-JIGUNIT3.rut")
+input_file_down_upper = os.path.join(fixtures_dir, "G8360-TEST-BOT-JIGUNIT1.rut")
+input_file_down_middle = os.path.join(fixtures_dir, "G8360-TEST-BOT-JIGUNIT2.rut")
+input_file_down_bottom = os.path.join(fixtures_dir, "G8360-TEST-BOT-JIGUNIT3.rut")
 
 import re
 import matplotlib.pyplot as plt

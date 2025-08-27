@@ -5,7 +5,7 @@ from typing import List, Tuple, Dict
 
 # 定义常量
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-DOC_DIR = os.path.join(SCRIPT_DIR, "doc")
+DOC_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(SCRIPT_DIR))), "test", "fixtures", "rut")
 
 # 文件路径配置
 FILE_PATHS = {

@@ -2,7 +2,7 @@
   "name": "electron-jig-viewer",
   "version": "1.0.0",
   "description": "An Electron application to visualize JIG data.",
-  "main": "background.js",
+  "main": "app/main/background.js",
   "scripts": {
     "start": "npm run dev",
     "dev": "concurrently \"vite\" \"electron .\"",

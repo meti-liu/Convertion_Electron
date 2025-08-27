@@ -9,8 +9,8 @@ let mainWindow;
 let networkMonitorWindow = null;
 let currentLocale;
 
-// Initialize DB in the project's root directory
-const dbPath = path.join(__dirname, 'jig_data.db');
+// Initialize DB in the data directory
+const dbPath = path.join(__dirname, '../../data/jig_data.db');
 const db = new sqlite3.Database(dbPath, (err) => {
   if (err) {
     console.error('Database opening error: ', err);
@@ -54,7 +54,7 @@ async function createWindow() {
     width: 1200,
     height: 800,
     webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
+      preload: path.join(__dirname, './preload.js'),
       contextIsolation: true, // 必须为 true
       nodeIntegration: false, // 推荐为 false 以提高安全性
     },
@@ -100,7 +100,7 @@ async function createNetworkMonitorWindow() {
     height: 600,
     title: i18n.t('network_monitor_title'), // 'Network Monitor'
     webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
+      preload: path.join(__dirname, './preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
     },
@@ -125,8 +125,8 @@ async function main() {
 
   await createWindow();
 
-  // --- Auto-load and process .rut and .adr files from 'doc' directory ---
-  const docDir = path.join(__dirname, 'doc');
+  // --- Auto-load and process .rut and .adr files from 'test/fixtures/rut' directory ---
+  const docDir = path.join(__dirname, '../../test/fixtures/rut');
   try {
     console.log(`[Auto-Load] Checking for jig files in: ${docDir}`);
     const files = await fs.readdir(docDir);
@@ -151,8 +151,8 @@ async function main() {
     dialog.showErrorBox(i18n.t('auto_load_error'), i18n.t('auto_load_error_message'));
   }
 
-  // --- Auto-load and process log files from 'doc_test' directory ---
-  const docTestDir = path.join(__dirname, 'doc_test');
+  // --- Auto-load and process log files from 'test/fixtures/logs' directory ---
+  const docTestDir = path.join(__dirname, '../../test/fixtures/logs');
   try {
     console.log(`[Debug] 1. Starting auto-load for fail logs from: ${docTestDir}`);
     const files = await fs.readdir(docTestDir);
@@ -360,7 +360,7 @@ async function processFailLogs(filePaths) {
 
 // Function to process .rut and .adr files
 async function processJigFiles(rutFiles, adrFile) {
-  const scriptPath = path.join(__dirname, 'json_script.py');
+  const scriptPath = path.join(__dirname, '../../app/python/json_script.py');
   const scriptArgs = [...rutFiles, adrFile];
 
   return new Promise((resolve, reject) => {
@@ -395,7 +395,7 @@ async function processJigFiles(rutFiles, adrFile) {
 
 function runFailParser(filePath) {
   return new Promise((resolve, reject) => {
-    const pythonProcess = spawn('python', [path.join(__dirname, 'parse_fails.py'), filePath]);
+    const pythonProcess = spawn('python', [path.join(__dirname, '../../app/python/parse_fails.py'), filePath]);
 
     let stdout = '';
     let stderr = '';
