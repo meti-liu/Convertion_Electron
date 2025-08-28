@@ -1,12 +1,16 @@
 <!-- app/renderer/src/App.vue -->
 <template>
-  <div id="app-container">
-    <LanguageSwitcher />
-    <h1 class="title">{{ t('app_title') }}</h1>
-    <!-- Main Content Area -->
-    <div class="main-content">
-      <!-- Controls are now the first column -->
-      <div class="controls-sidebar">
+  <el-container id="app-container">
+    <el-header height="auto" class="app-header">
+      <div class="header-content">
+        <h1 class="title">{{ t('app_title') }}</h1>
+        <LanguageSwitcher />
+      </div>
+    </el-header>
+    
+    <el-container class="main-container">
+      <!-- Controls sidebar -->
+      <el-aside width="300px" class="controls-sidebar">
         <ControlPanel>
           <PinInspector 
             @highlight-pins="handleHighlightPins"
@@ -15,25 +19,33 @@
             :failData="fail_data" 
           />
         </ControlPanel>
-      </div>
+      </el-aside>
 
-      <!-- Jig Charts are now direct children of main-content, forming the next columns -->
-      <JigChart
-        :chartData="chartDataTop"
-        :highlightedPinIds="highlightedPinIds"
-        :selectedPinId="selectedPinId"
-        :pinToZoom="topPinToZoom" 
-        :title="t('top_jig_side_a')"
-      />
-      <JigChart
-        :chartData="chartDataBot"
-        :highlightedPinIds="highlightedPinIds"
-        :selectedPinId="selectedPinId"
-        :pinToZoom="botPinToZoom"
-        :title="t('bottom_jig_side_b')"
-      />
-    </div>
-  </div>
+      <!-- Main content area with charts -->
+      <el-main class="charts-container">
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <JigChart
+              :chartData="chartDataTop"
+              :highlightedPinIds="highlightedPinIds"
+              :selectedPinId="selectedPinId"
+              :pinToZoom="topPinToZoom" 
+              :title="t('top_jig_side_a')"
+            />
+          </el-col>
+          <el-col :span="12">
+            <JigChart
+              :chartData="chartDataBot"
+              :highlightedPinIds="highlightedPinIds"
+              :selectedPinId="selectedPinId"
+              :pinToZoom="botPinToZoom"
+              :title="t('bottom_jig_side_b')"
+            />
+          </el-col>
+        </el-row>
+      </el-main>
+    </el-container>
+  </el-container>
 </template>
 
 <script setup>
@@ -194,9 +206,55 @@ function handleSelectPin(pinId) {
 
 </script>
 
-<style>
+<style scoped>
 /* Import the global stylesheet */
 @import '../assets/styles.css';
 
-/* Scoped styles for App.vue layout can go here if needed in the future */
+#app-container {
+  height: 100vh;
+  background-color: #1e1e1e;
+  color: #ffffff;
+}
+
+.app-header {
+  padding: 16px;
+  background-color: #2c2c2c;
+}
+
+.header-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.title {
+  margin: 0;
+  color: #ffffff;
+}
+
+.main-container {
+  height: calc(100vh - 80px);
+}
+
+.controls-sidebar {
+  background-color: #252525;
+  padding: 16px;
+  overflow-y: auto;
+  width: 300px !important;
+  min-width: 300px;
+  max-width: 300px;
+}
+
+.charts-container {
+  padding: 16px;
+}
+
+:deep(.el-main) {
+  padding: 16px;
+}
+
+:deep(.el-row) {
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+}
 </style>

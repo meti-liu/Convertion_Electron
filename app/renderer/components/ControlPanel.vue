@@ -1,9 +1,13 @@
 <!-- src/components/ControlPanel.vue -->
 <template>
-  <div class="control-panel">
-    <h3>{{ t('controls') }}</h3>
+  <el-card class="control-panel" shadow="hover">
+    <template #header>
+      <div class="card-header">
+        <h3>{{ t('controls') }}</h3>
+      </div>
+    </template>
     <slot></slot>
-  </div>
+  </el-card>
 </template>
 
 <script setup>
@@ -14,12 +18,14 @@ const { t } = useI18n();
 
 <style scoped>
 .control-panel {
+  margin-bottom: 16px;
+  width: 100%;
+  height: auto;
+}
+
+.card-header {
   display: flex;
-  flex-direction: column;
-  gap: 16px;
-  padding: 16px;
-  background-color: #f1f5f9; /* A light gray background */
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  justify-content: space-between;
+  align-items: center;
 }
 </style>

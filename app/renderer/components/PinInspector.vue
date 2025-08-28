@@ -2,40 +2,60 @@
 <template>
   <div class="pin-inspector">
     <div class="controls">
-      <el-button type="primary" @click="processFailLogs" class="action-button">{{ t('load_fail_logs') }}</el-button>
+      <el-button type="primary" @click="processFailLogs" class="action-button">
+        <el-icon><Upload /></el-icon>
+        {{ t('load_fail_logs') }}
+      </el-button>
     </div>
-    <div v-if="logFiles.length > 0" class="log-navigation">
-      <el-button @click="prevLog" :disabled="currentLogIndex === 0">{{ t('previous_log') }}</el-button>
-      <el-button @click="nextLog" :disabled="currentLogIndex >= logFiles.length - 1">{{ t('next_log') }}</el-button>
-    </div>
-    <div class="log-display">
-      <div v-if="currentLogFile" class="log-content-wrapper">
-        <div class="log-header">
-          <h3>{{ t('log_file_label', { name: currentLogFile.name }) }}</h3>
-        </div>
-        <el-input
-          :model-value="currentLogFile.content"
-          type="textarea"
-          :rows="10"
-          readonly
-          class="csv-content-area"
-        ></el-input>
-        <div v-if="currentLogFile.failedPins.length > 0" class="failed-pins">
-          <h4>{{ t('failed_pins') }}</h4>
-          <div class="pins-grid">
-            <el-tag
-              v-for="pinId in currentLogFile.failedPins"
-              :key="pinId"
-              class="pin-item"
-              :effect="selectedPinId === pinId ? 'dark' : 'plain'"
-              @click="togglePinSelection(pinId)"
-              size="large"
-            >
-              {{ pinId }}
-            </el-tag>
+    
+    <el-empty v-if="logFiles.length === 0" :description="t('no_logs_loaded')" />
+    
+    <div v-else class="logs-container">
+      <el-tabs v-model="currentLogIndex" type="card" class="log-tabs" @tab-change="handleTabChange">
+        <el-tab-pane 
+          v-for="(log, index) in logFiles" 
+          :key="log.id" 
+          :label="log.name"
+          :name="index.toString()"
+        >
+          <template #label>
+            <el-badge :value="log.failedPins.length" :max="99" type="danger" v-if="log.failedPins.length > 0">
+              {{ log.name }}
+            </el-badge>
+            <span v-else>{{ log.name }}</span>
+          </template>
+          
+          <el-input
+            :model-value="log.content"
+            type="textarea"
+            :rows="8"
+            readonly
+            class="csv-content-area"
+          ></el-input>
+          
+          <div v-if="log.failedPins.length > 0" class="failed-pins">
+            <el-divider content-position="left">
+              <el-tag type="danger">{{ t('failed_pins') }}</el-tag>
+            </el-divider>
+            
+            <el-scrollbar height="150px">
+              <div class="pins-grid">
+                <el-tag
+                  v-for="pinId in log.failedPins"
+                  :key="pinId"
+                  class="pin-item"
+                  :type="selectedPinId === pinId ? 'danger' : 'info'"
+                  :effect="selectedPinId === pinId ? 'dark' : 'light'"
+                  @click="togglePinSelection(pinId)"
+                  size="large"
+                >
+                  {{ pinId }}
+                </el-tag>
+              </div>
+            </el-scrollbar>
           </div>
-        </div>
-      </div>
+        </el-tab-pane>
+      </el-tabs>
     </div>
   </div>
 </template>
@@ -43,6 +63,7 @@
 <script setup>
 import { ref, computed, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { Upload } from '@element-plus/icons-vue';
 
 const { t } = useI18n();
 
@@ -68,16 +89,17 @@ const togglePinSelection = (pinId) => {
   emit('select-pin', selectedPinId.value);
 };
 
+// Handle tab change - convert string index back to number
+const handleTabChange = (tabIndex) => {
+  currentLogIndex.value = parseInt(tabIndex);
+  updateLogContentAndHighlight();
+};
+
 const currentLogFile = computed(() => {
   return logFiles.value[currentLogIndex.value] || null;
 });
 
 // --- Watchers ---
-watch(currentLogIndex, () => {
-  updateLogContentAndHighlight();
-});
-
-// Watch for auto-loaded data from the parent component
 watch(() => props.failData, (newData) => {
   if (newData && newData.length > 0) {
     // When auto-loaded data arrives, set it as the initial list
@@ -132,37 +154,83 @@ const nextLog = () => {
 
 <style scoped>
 .pin-inspector {
+  margin-bottom: 16px;
+  width: 100%;
   display: flex;
   flex-direction: column;
-  gap: 1rem;
 }
 
-.controls, .log-navigation {
+.controls {
+  margin-bottom: 16px;
   display: flex;
-  gap: 0.5rem;
-}
-
-.log-navigation {
   justify-content: space-between;
+  width: 100%;
 }
 
-.log-content-wrapper {
+.action-button {
+  width: 100%;
+}
+
+.logs-container {
+  margin-top: 16px;
+  width: 100%;
   display: flex;
   flex-direction: column;
-  gap: 1rem;
 }
 
-.failed-pins h4 {
-  margin-bottom: 0.5rem;
+.log-tabs {
+  width: 100%;
+}
+
+:deep(.el-tabs__content) {
+  width: 100%;
+}
+
+:deep(.el-tab-pane) {
+  width: 100%;
+}
+
+.csv-content-area {
+  font-family: monospace;
+  margin-bottom: 16px;
+  width: 100%;
+}
+
+:deep(.el-textarea__inner) {
+  width: 100%;
+  background-color: #1e1e1e;
+  color: #ffffff;
+  border-color: #333;
+}
+
+.failed-pins {
+  margin-top: 16px;
+  width: 100%;
 }
 
 .pins-grid {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
+  gap: 8px;
+  padding: 8px 0;
+  width: 100%;
 }
 
 .pin-item {
   cursor: pointer;
+}
+
+:deep(.el-button) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+:deep(.el-icon) {
+  margin-right: 5px;
+}
+
+:deep(.el-empty) {
+  padding: 20px 0;
 }
 </style>

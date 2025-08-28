@@ -1,26 +1,65 @@
 <template>
   <div class="network-monitor">
-    <h2>{{ t('network_monitor') }}</h2>
-    <p>Locale: {{ locale }}</p>
-    <div class="controls">
-      <input v-model="host" :placeholder="t('host_ip_placeholder')" />
-      <input v-model="port" type="number" :placeholder="t('port_placeholder')" />
-      <button @click="startServer" :disabled="isRunning">{{ t('start_server') }}</button>
-      <button @click="stopServer" :disabled="!isRunning">{{ t('stop_server') }}</button>
-    </div>
-    <div class="status">
-      <strong>{{ t('status_label') }}</strong> <span :class="statusClass">{{ statusMessage }}</span>
-    </div>
-    <div class="logs">
-      <h3>{{ t('logs_label') }}</h3>
-      <pre>{{ logs.join('\n') }}</pre>
-    </div>
+    <el-card class="monitor-card">
+      <template #header>
+        <div class="card-header">
+          <h2>{{ t('network_monitor') }}</h2>
+          <el-tag size="small">{{ locale }}</el-tag>
+        </div>
+      </template>
+      
+      <el-form :model="formData" label-position="top" class="server-form">
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item :label="t('host_ip_placeholder')">
+              <el-input v-model="host" :placeholder="t('host_ip_placeholder')" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item :label="t('port_placeholder')">
+              <el-input-number v-model="port" :min="1" :max="65535" :placeholder="t('port_placeholder')" />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        
+        <el-form-item>
+          <el-button type="primary" @click="startServer" :disabled="isRunning">
+            <el-icon><VideoPlay /></el-icon> {{ t('start_server') }}
+          </el-button>
+          <el-button type="danger" @click="stopServer" :disabled="!isRunning">
+            <el-icon><VideoPause /></el-icon> {{ t('stop_server') }}
+          </el-button>
+        </el-form-item>
+      </el-form>
+      
+      <el-divider content-position="left">
+        <el-icon><InfoFilled /></el-icon> {{ t('status_label') }}
+      </el-divider>
+      
+      <el-alert
+        :title="statusMessage"
+        :type="statusType"
+        :closable="false"
+        show-icon
+      />
+      
+      <el-divider content-position="left">
+        <el-icon><Document /></el-icon> {{ t('logs_label') }}
+      </el-divider>
+      
+      <el-scrollbar height="300px" class="logs-scrollbar">
+        <div class="log-entry" v-for="(log, index) in logs" :key="index">
+          <pre>{{ log }}</pre>
+        </div>
+      </el-scrollbar>
+    </el-card>
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted, onUnmounted, computed } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { VideoPlay, VideoPause, InfoFilled, Document } from '@element-plus/icons-vue';
 
 const { t, locale } = useI18n();
 
@@ -29,7 +68,16 @@ const port = ref(8080);
 const isRunning = ref(false);
 const statusMessage = ref('Stopped');
 const logs = ref([]);
+const formData = ref({}); // Empty form model for el-form
 
+// Compute status type for el-alert component
+const statusType = computed(() => {
+  if (isRunning.value) return 'success';
+  if (statusMessage.value.toLowerCase().includes('error')) return 'error';
+  return 'info';
+});
+
+// Keep for backward compatibility
 const statusClass = computed(() => {
   if (isRunning.value) return 'running';
   if (statusMessage.value.toLowerCase().includes('error')) return 'error';
@@ -116,38 +164,59 @@ onUnmounted(() => {
 
 <style scoped>
 .network-monitor {
-  padding: 20px;
-  font-family: sans-serif;
+  padding: 16px;
 }
-.controls {
-  margin-bottom: 20px;
+
+.monitor-card {
+  width: 100%;
+}
+
+.card-header {
   display: flex;
-  gap: 10px;
+  justify-content: space-between;
+  align-items: center;
 }
-.status {
-  margin-bottom: 20px;
+
+.card-header h2 {
+  margin: 0;
 }
-.status .running {
-  color: green;
-  font-weight: bold;
+
+.server-form {
+  margin-bottom: 16px;
 }
-.status .stopped {
-  color: red;
-  font-weight: bold;
+
+.logs-scrollbar {
+  margin-top: 16px;
+  border: 1px solid #e4e7ed;
+  border-radius: 4px;
 }
-.status .error {
-    color: orange;
-    font-weight: bold;
+
+.log-entry {
+  padding: 8px;
+  border-bottom: 1px solid #ebeef5;
 }
-.logs {
-  border: 1px solid #ccc;
-  padding: 10px;
-  height: 300px;
-  overflow-y: auto;
-  background-color: #f5f5f5;
+
+.log-entry:last-child {
+  border-bottom: none;
 }
-pre {
+
+.log-entry pre {
+  margin: 0;
+  font-family: monospace;
   white-space: pre-wrap;
-  word-wrap: break-word;
+  word-break: break-all;
+}
+
+/* Keep these for backward compatibility */
+.running {
+  color: #67c23a;
+}
+
+.stopped {
+  color: #909399;
+}
+
+.error {
+  color: #f56c6c;
 }
 </style>
