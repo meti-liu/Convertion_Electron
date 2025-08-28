@@ -627,13 +627,13 @@ async function processJigFiles(rutFiles, adrFile) {
 
     pyProcess.stdout.on('data', (data) => {
       const dataStr = data.toString();
-      console.log(`[Python stdout] ${dataStr.trim()}`);
+      // 不再打印Python输出到控制台，只累加到stdout变量中用于后续解析
       stdout += dataStr;
     });
 
     pyProcess.stderr.on('data', (data) => {
       const dataStr = data.toString();
-      console.error(`[Python stderr] ${dataStr.trim()}`);
+      // 不再打印Python错误输出到控制台，只累加到stderr变量中用于后续错误处理
       stderr += dataStr;
     });
 

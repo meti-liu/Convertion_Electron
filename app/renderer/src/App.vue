@@ -8,6 +8,9 @@
       </div>
     </el-header>
     
+    <!-- FPS Monitor -->
+    <FpsMonitor />
+    
     <el-container class="main-container">
       <!-- Controls sidebar -->
       <el-aside width="300px" class="controls-sidebar">
@@ -55,6 +58,7 @@ import JigChart from '../components/JigChart_svg.vue';
 import ControlPanel from '../components/ControlPanel.vue';
 import PinInspector from '../components/PinInspector.vue';
 import LanguageSwitcher from '../components/LanguageSwitcher.vue';
+import FpsMonitor from '../components/FpsMonitor.vue';
 
 const { t } = useI18n();
 const chartDataTop = ref({ datasets: [] });
