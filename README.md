@@ -160,7 +160,7 @@ Jig Viewer 是一个专为电子制造业设计的高性能桌面应用程序，
 
 ### 环境要求
 - Node.js (v16+)
-- Python 3.x
+- Python 3.x (仅开发环境需要)
 - npm 或 yarn
 
 ### 安装步骤
@@ -175,7 +175,44 @@ npm install
 
 # 运行开发环境
 npm run dev
+
+# 打包应用
+npm run build
 ```
+
+## 应用打包
+
+### 打包技术栈
+- **打包工具**: electron-builder
+- **Python打包**: PyInstaller
+
+### 打包流程
+1. 使用PyInstaller将Python脚本打包为独立可执行文件
+   - `json_script.py` → `json_script.exe`
+   - `parse_fails.py` → `parse_fails.exe`
+
+2. 使用electron-builder打包Electron应用
+   - 配置位于`package.json`的`build`字段
+   - 自动处理依赖和资源文件
+
+### 打包后的应用结构
+```
+/dist/win-unpacked/
+├── JIG Viewer.exe          # 主程序
+├── resources/              # 资源目录
+│   ├── app.asar            # 打包后的应用代码
+│   ├── python/             # Python相关文件
+│   │   ├── json_script.exe # 打包后的Python脚本
+│   │   ├── parse_fails.exe # 打包后的Python脚本
+│   │   └── converters/     # 转换器脚本
+│   └── test/               # 测试数据
+└── [其他Electron运行时文件]  # DLL、PAK等系统文件
+```
+
+### 注意事项
+- 打包后的应用不需要安装Python环境
+- 所有必要的Python依赖已打包到可执行文件中
+- 打包后的`win-unpacked`目录中的系统文件（`.dll`、`.bin`、`.pak`等）不可删除
 
 ## 使用指南
 
