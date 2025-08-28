@@ -42,7 +42,7 @@
   "toggle_network_monitor": "切換網路監視器",
   "network_monitor_title": "網路監視器",
   "auto_load_error": "自動載入錯誤",
-  "auto_load_error_message": "從 \"doc\" 目錄自動載入治具數據失敗。",
+  "auto_load_error_message": "從 fixtures 目錄自動載入治具數據失敗。",
   "jig_files": "治具檔案",
   "file_selection_error": "檔案選擇錯誤",
   "file_selection_error_message": "您必須至少選擇一個 .RUT 檔案和一個 .ADR 檔案。",

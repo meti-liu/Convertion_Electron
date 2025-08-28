@@ -47,7 +47,18 @@ const loadURLWithRetry = async (win, url, options = { maxRetries: 15, retryDelay
     }
   }
   console.error(`Failed to load ${url} after ${maxRetries} attempts.`);
-  dialog.showErrorBox('Load Error', `Failed to load URL: ${url}. Please ensure the dev server is running.`);
+  
+  // 根据URL类型显示不同的错误信息
+  let errorMessage;
+  if (url.startsWith('http://localhost')) {
+    errorMessage = `Failed to load URL: ${url}. Please ensure the dev server is running.`;
+  } else if (url.startsWith('file://')) {
+    errorMessage = `Failed to load file: ${url}. Please ensure the application is properly installed.`;
+  } else {
+    errorMessage = `Failed to load URL: ${url}. Please check your network connection.`;
+  }
+  
+  dialog.showErrorBox('Load Error', errorMessage);
 };
 
 async function createWindow() {
@@ -83,7 +94,19 @@ async function createWindow() {
   ]);
   Menu.setApplicationMenu(menu);
 
-  await loadURLWithRetry(mainWindow, 'http://localhost:5177/app/renderer/index.html');
+  // 根据应用是否打包，使用不同的URL加载方式
+  let indexUrl;
+  if (app.isPackaged) {
+    // 打包环境下，使用file://协议加载本地HTML文件
+    indexUrl = `file://${path.join(__dirname, '../../dist_web/app/renderer/index.html')}`;
+    console.log(`[createWindow] Loading packaged index URL: ${indexUrl}`);
+  } else {
+    // 开发环境下，使用Vite开发服务器
+    indexUrl = 'http://localhost:5177/app/renderer/index.html';
+    console.log(`[createWindow] Loading development index URL: ${indexUrl}`);
+  }
+
+  await loadURLWithRetry(mainWindow, indexUrl);
   mainWindow.webContents.openDevTools();
 
   tcp_handler.setWindows(mainWindow, networkMonitorWindow);
@@ -107,8 +130,19 @@ async function createNetworkMonitorWindow() {
     },
   });
 
-  // Load the network.html from the Vite dev server
-  await loadURLWithRetry(networkMonitorWindow, 'http://localhost:5177/app/renderer/network.html');
+  // 根据应用是否打包，使用不同的URL加载方式
+  let networkUrl;
+  if (app.isPackaged) {
+    // 打包环境下，使用file://协议加载本地HTML文件
+    networkUrl = `file://${path.join(__dirname, '../../dist_web/app/renderer/network.html')}`;
+    console.log(`[createNetworkMonitorWindow] Loading packaged network URL: ${networkUrl}`);
+  } else {
+    // 开发环境下，使用Vite开发服务器
+    networkUrl = 'http://localhost:5177/app/renderer/network.html';
+    console.log(`[createNetworkMonitorWindow] Loading development network URL: ${networkUrl}`);
+  }
+
+  await loadURLWithRetry(networkMonitorWindow, networkUrl);
   networkMonitorWindow.webContents.openDevTools();
 
   networkMonitorWindow.on('closed', () => {
@@ -119,22 +153,57 @@ async function createNetworkMonitorWindow() {
   tcp_handler.setWindows(mainWindow, networkMonitorWindow);
 }
 
+// 导入资源验证模块
+let verifyResources;
+try {
+  verifyResources = require('../../test/verify-resources').verifyResources;
+} catch (error) {
+  console.error(`Failed to import verify-resources module: ${error.message}`);
+  verifyResources = async () => {
+    console.log('Verify resources module not available');
+  };
+}
+
 async function main() {
   // Load locales before creating any windows or menus
   await i18n.loadLocales();
   currentLocale = i18n.getLocale();
 
   await createWindow();
+  
+  // 验证资源
+  if (app.isPackaged) {
+    try {
+      await verifyResources();
+    } catch (error) {
+      console.error(`Error running resource verification: ${error.message}`);
+    }
+  }
 
   // --- Auto-load and process .rut and .adr files ---
-  // 使用app.getAppPath()获取应用根目录，这在开发和生产环境都有效
-  const appRootPath = app.getAppPath();
-  console.log(`[Auto-Load] App root path: ${appRootPath}`);
+  // 根据环境确定应用根目录
+  let appRootPath;
+  if (app.isPackaged) {
+    appRootPath = process.resourcesPath;
+    console.log(`[Auto-Load] App is packaged, using resources path: ${appRootPath}`);
+  } else {
+    appRootPath = app.getAppPath();
+    console.log(`[Auto-Load] App is in development, using app path: ${appRootPath}`);
+  }
   
   // 首先尝试从test/fixtures/rut目录加载文件
   const testFixturesDir = path.join(appRootPath, 'test', 'fixtures', 'rut');
-  const docDir = path.join(appRootPath, 'doc');
   let jigDataLoaded = false;
+  
+  console.log(`[Auto-Load] Looking for jig files in: ${testFixturesDir}`);
+  try {
+    // 检查目录是否存在
+    await fs.access(testFixturesDir);
+    console.log(`[Auto-Load] Directory exists: ${testFixturesDir}`);
+  } catch (error) {
+    console.error(`[Auto-Load] Directory does not exist: ${testFixturesDir}`);
+    console.error(`[Auto-Load] Error: ${error.message}`);
+  }
   
   // 先尝试从test/fixtures/rut目录加载
   try {
@@ -161,39 +230,26 @@ async function main() {
     console.log('[Auto-Load] Could not load from test/fixtures/rut:', error.message);
   }
   
-  // 如果从test/fixtures/rut加载失败，尝试从doc目录加载
+  // 如果从test/fixtures/rut加载失败，显示错误信息
   if (!jigDataLoaded) {
-    try {
-      console.log(`[Auto-Load] Checking for jig files in: ${docDir}`);
-      const files = await fs.readdir(docDir);
-
-      const rutFiles = files
-        .filter(file => file.toLowerCase().endsWith('.rut'))
-        .map(file => path.join(docDir, file));
-      const adrFile = files
-        .map(file => path.join(docDir, file))
-        .find(file => file.toLowerCase().endsWith('.adr'));
-
-      if (rutFiles.length > 0 && adrFile) {
-        console.log(`[Auto-Load] Found ${rutFiles.length} .rut and 1 .adr file in doc. Processing...`);
-        const jigData = await processJigFiles(rutFiles, adrFile);
-        console.log('[Auto-Load] Jig data processed from doc. Sending to renderer...');
-        mainWindow.webContents.send('jig-data-loaded', jigData);
-      } else {
-        console.log('[Auto-Load] Not enough .rut or .adr files found in /doc to proceed.');
-        dialog.showErrorBox(i18n.t('auto_load_error'), i18n.t('auto_load_error_message'));
-      }
-    } catch (error) {
-      console.error('[Auto-Load] Error during jig file auto-load from doc:', error);
-      dialog.showErrorBox(i18n.t('auto_load_error'), i18n.t('auto_load_error_message'));
-    }
+    console.log('[Auto-Load] Failed to load jig files from test/fixtures/rut.');
+    dialog.showErrorBox(i18n.t('auto_load_error'), i18n.t('auto_load_error_message'));
   }
 
   // --- Auto-load and process log files ---
-  // 先尝试从test/fixtures/logs目录加载日志文件，如果失败再从doc目录加载
+  // 从test/fixtures/logs目录加载日志文件
   const testFixturesLogsDir = path.join(appRootPath, 'test', 'fixtures', 'logs');
-  const docTestDir = path.join(appRootPath, 'doc');
   let logsLoaded = false;
+  
+  console.log(`[Auto-Load] Looking for log files in: ${testFixturesLogsDir}`);
+  try {
+    // 检查目录是否存在
+    await fs.access(testFixturesLogsDir);
+    console.log(`[Auto-Load] Logs directory exists: ${testFixturesLogsDir}`);
+  } catch (error) {
+    console.error(`[Auto-Load] Logs directory does not exist: ${testFixturesLogsDir}`);
+    console.error(`[Auto-Load] Error: ${error.message}`);
+  }
   
   // 先尝试从test/fixtures/logs目录加载
   try {
@@ -219,29 +275,10 @@ async function main() {
     console.log('[Auto-Load] Could not load logs from test/fixtures/logs:', error.message);
   }
   
-  // 如果从test/fixtures/logs加载失败，尝试从doc目录加载
+  // 如果从test/fixtures/logs加载失败，记录错误但不显示错误对话框
   if (!logsLoaded) {
-    try {
-      console.log(`[Debug] 1. Starting auto-load for fail logs from: ${docTestDir}`);
-      const files = await fs.readdir(docTestDir);
-      console.log(`[Debug] 2. Found ${files.length} total files in doc.`);
-      const logFiles = files
-        .filter(f => f.toLowerCase().endsWith('.csv') || f.toLowerCase().endsWith('.txt'))
-        .map(f => path.join(docTestDir, f));
-      console.log(`[Debug] 3. Filtered ${logFiles.length} log files (.csv, .txt).`);
-
-      if (logFiles.length > 0) {
-        console.log(`[Debug] 4. Calling processFailLogs with ${logFiles.length} files from doc.`);
-        const failData = await processFailLogs(logFiles);
-        console.log(`[Debug] 8. processFailLogs finished. Sending ${failData.length} items to renderer.`);
-        mainWindow.webContents.send('fail-data-loaded', failData);
-        console.log('[Debug] 9. Sent fail-data-loaded IPC message.');
-      } else {
-        console.log('[Auto-Load] No log files found in doc directory.');
-      }
-    } catch (error) {
-      console.error('[Auto-Load] FATAL CRASH during fail log auto-load from doc:', error);
-    }
+    console.log('[Auto-Load] No log files were loaded from test/fixtures/logs.');
+    // 日志文件加载失败不显示错误对话框，因为这不是必需的功能
   }
 }
 
@@ -431,67 +468,159 @@ async function processFailLogs(filePaths) {
 async function processJigFiles(rutFiles, adrFile) {
   // 在开发环境和打包环境中都能正确找到Python脚本
   let scriptPath;
-  let finalAdrFile = adrFile;
+  let finalRutFiles = [];
+  let finalAdrFile = null;
   
+  // 根据应用是否打包，确定Python脚本路径和文件处理逻辑
   if (app.isPackaged) {
     // 打包环境下，Python脚本位于resources/python目录
     scriptPath = path.join(process.resourcesPath, 'python', 'json_script.py');
     console.log(`[processJigFiles] Using packaged script path: ${scriptPath}`);
     
-    // 确保ADR文件存在并可访问
+    // 检查resources/test/fixtures/rut目录是否存在
+    const resourcesRutDir = path.join(process.resourcesPath, 'test', 'fixtures', 'rut');
+    console.log(`[processJigFiles] Checking resources RUT directory: ${resourcesRutDir}`);
+    
     try {
-      await fs.access(adrFile);
-      console.log(`[processJigFiles] ADR file exists at: ${adrFile}`);
-    } catch (error) {
-      console.error(`[processJigFiles] Error accessing ADR file: ${error.message}`);
+      await fs.access(resourcesRutDir);
+      console.log(`[processJigFiles] Resources RUT directory exists`);
       
-      // 尝试在resources目录中查找ADR文件
-      const adrFileName = path.basename(adrFile);
-      const resourcesAdrPath = path.join(process.resourcesPath, 'test', 'fixtures', 'rut', adrFileName);
+      // 列出resources/test/fixtures/rut目录中的文件
+      const resourcesFiles = await fs.readdir(resourcesRutDir);
+      console.log(`[processJigFiles] Files in resources RUT directory: ${resourcesFiles.join(', ')}`);
       
-      try {
-        await fs.access(resourcesAdrPath);
-        console.log(`[processJigFiles] Found ADR file in resources: ${resourcesAdrPath}`);
-        finalAdrFile = resourcesAdrPath;
-      } catch (resourceError) {
-        console.error(`[processJigFiles] ADR file not found in resources: ${resourceError.message}`);
-        
-        // 尝试复制ADR文件到临时目录
-        const tempDir = app.getPath('temp');
-        const tempAdrFile = path.join(tempDir, adrFileName);
+      // 处理RUT文件
+      for (const rutFile of rutFiles) {
+        const rutFileName = path.basename(rutFile);
+        const resourcesRutPath = path.join(resourcesRutDir, rutFileName);
         
         try {
-          // 如果原始ADR文件存在，复制到临时目录
-          if (await fs.stat(adrFile).catch(() => false)) {
-            await fs.copyFile(adrFile, tempAdrFile);
-            console.log(`[processJigFiles] Copied ADR file to: ${tempAdrFile}`);
-            finalAdrFile = tempAdrFile;
-          } else {
-            console.error(`[processJigFiles] Cannot find ADR file anywhere: ${adrFileName}`);
-            // 创建一个空的ADR文件，以便Python脚本能够继续运行
+          await fs.access(resourcesRutPath);
+          console.log(`[processJigFiles] Found RUT file in resources: ${resourcesRutPath}`);
+          finalRutFiles.push(resourcesRutPath);
+        } catch (error) {
+          console.log(`[processJigFiles] RUT file not found in resources, trying original path: ${rutFile}`);
+          try {
+            await fs.access(rutFile);
+            finalRutFiles.push(rutFile);
+          } catch (originalError) {
+            console.error(`[processJigFiles] RUT file not accessible at original path either: ${originalError.message}`);
+          }
+        }
+      }
+      
+      // 处理ADR文件
+      if (adrFile) {
+        const adrFileName = path.basename(adrFile);
+        const resourcesAdrPath = path.join(resourcesRutDir, adrFileName);
+        
+        try {
+          await fs.access(resourcesAdrPath);
+          console.log(`[processJigFiles] Found ADR file in resources: ${resourcesAdrPath}`);
+          finalAdrFile = resourcesAdrPath;
+        } catch (error) {
+          console.log(`[processJigFiles] ADR file not found in resources, trying original path: ${adrFile}`);
+          try {
+            await fs.access(adrFile);
+            finalAdrFile = adrFile;
+          } catch (originalError) {
+            console.error(`[processJigFiles] ADR file not accessible at original path either: ${originalError.message}`);
+            // 创建一个临时ADR文件
+            const tempDir = app.getPath('temp');
+            const tempAdrFile = path.join(tempDir, adrFileName);
             await fs.writeFile(tempAdrFile, '');
             console.log(`[processJigFiles] Created empty ADR file at: ${tempAdrFile}`);
             finalAdrFile = tempAdrFile;
           }
-        } catch (copyError) {
-          console.error(`[processJigFiles] Failed to handle ADR file: ${copyError.message}`);
         }
       }
+    } catch (dirError) {
+      console.error(`[processJigFiles] Resources RUT directory does not exist: ${dirError.message}`);
+      // 如果resources目录不存在，尝试使用原始路径
+      finalRutFiles = [...rutFiles];
+      finalAdrFile = adrFile;
     }
   } else {
-    // 开发环境下，Python脚本位于app/python目录
+    // 开发环境下，Python脚本位于app/python目录，使用原始文件路径
     scriptPath = path.join(__dirname, '../../app/python/json_script.py');
     console.log(`[processJigFiles] Using development script path: ${scriptPath}`);
+    finalRutFiles = [...rutFiles];
+    finalAdrFile = adrFile;
   }
   
-  const scriptArgs = [...rutFiles, finalAdrFile];
+  // 检查最终的文件路径
+  console.log(`[processJigFiles] Final RUT files (${finalRutFiles.length}): ${finalRutFiles.join(', ')}`);
+  console.log(`[processJigFiles] Final ADR file: ${finalAdrFile}`);
+  
+  if (finalRutFiles.length === 0 || !finalAdrFile) {
+    throw new Error('No valid RUT files or ADR file found');
+  }
+  
+  const scriptArgs = [...finalRutFiles, finalAdrFile];
   console.log(`[processJigFiles] Script path: ${scriptPath}`);
-  console.log(`[processJigFiles] RUT files: ${rutFiles.join(', ')}`);
+  console.log(`[processJigFiles] RUT files: ${finalRutFiles.join(', ')}`);
   console.log(`[processJigFiles] ADR file: ${finalAdrFile}`);
   console.log(`[processJigFiles] Current working directory: ${process.cwd()}`);
+  console.log(`[processJigFiles] Is packaged: ${app.isPackaged}`);
+  if (app.isPackaged) {
+    console.log(`[processJigFiles] Resources path: ${process.resourcesPath}`);
+    try {
+      const resourcesTestDir = path.join(process.resourcesPath, 'test', 'fixtures', 'rut');
+      console.log(`[processJigFiles] Checking resources test directory: ${resourcesTestDir}`);
+      const exists = await fs.stat(resourcesTestDir).catch(() => false);
+      console.log(`[processJigFiles] Resources test directory exists: ${!!exists}`);
+      if (exists) {
+        const files = await fs.readdir(resourcesTestDir);
+        console.log(`[processJigFiles] Files in resources test directory: ${files.join(', ')}`);
+      }
+    } catch (error) {
+      console.error(`[processJigFiles] Error checking resources directory: ${error.message}`);
+    }
+  }
 
   return new Promise((resolve, reject) => {
-    const pyProcess = spawn('python', [scriptPath, ...scriptArgs]);
+    let command;
+    let args;
+    
+    if (app.isPackaged) {
+      // 在打包环境中，直接使用打包好的可执行文件
+      if (process.platform === 'win32') {
+        // Windows环境下使用打包的exe文件
+        const exePath = path.join(process.resourcesPath, 'python', 'json_script.exe');
+        console.log(`[processJigFiles] Using packaged executable: ${exePath}`);
+        
+        try {
+          const fs = require('fs');
+          if (fs.existsSync(exePath)) {
+            // 直接使用可执行文件，不需要Python解释器
+            command = exePath;
+            args = scriptArgs; // 只传入文件参数，不需要脚本路径
+          } else {
+            console.error(`[processJigFiles] Packaged executable not found: ${exePath}`);
+            // 回退到系统Python
+            command = 'py';
+            args = [scriptPath, ...scriptArgs];
+          }
+        } catch (error) {
+          console.error(`[processJigFiles] Error checking executable: ${error.message}`);
+          // 回退到系统Python
+          command = 'py';
+          args = [scriptPath, ...scriptArgs];
+        }
+      } else {
+        // 非Windows环境
+        command = 'python';
+        args = [scriptPath, ...scriptArgs];
+      }
+    } else {
+      // 开发环境下使用Python解释器
+      command = 'python';
+      args = [scriptPath, ...scriptArgs];
+    }
+    
+    console.log(`[processJigFiles] Using command: ${command}`);
+    console.log(`[processJigFiles] With args: ${args.join(' ')}`);
+    const pyProcess = spawn(command, args);
 
     let stdout = '';
     let stderr = '';
@@ -530,8 +659,37 @@ async function processJigFiles(rutFiles, adrFile) {
     });
     
     pyProcess.on('error', (error) => {
-      console.error(`[processJigFiles] Failed to start Python process: ${error.message}`);
-      dialog.showErrorBox(i18n.t('python_script_error'), error.message);
+      console.error(`[processJigFiles] Failed to start process: ${error.message}`);
+      
+      // 提供更详细的错误信息
+      let errorDetails = `错误: ${error.message}\n\n`;
+      errorDetails += `命令: ${command}\n`;
+      errorDetails += `参数: ${args.join(' ')}\n`;
+      errorDetails += `是否打包: ${app.isPackaged}\n`;
+      
+      if (app.isPackaged) {
+        errorDetails += `资源路径: ${process.resourcesPath}\n`;
+        // 检查可执行文件是否存在
+        try {
+          const fs = require('fs');
+          const exePath = path.join(process.resourcesPath, 'python', 'json_script.exe');
+          const exeExists = fs.existsSync(exePath);
+          errorDetails += `可执行文件存在: ${exeExists}\n`;
+          
+          if (!exeExists) {
+            // 检查Python脚本是否存在
+            const scriptExists = fs.existsSync(scriptPath);
+            errorDetails += `脚本文件存在: ${scriptExists}\n`;
+          }
+        } catch (fsError) {
+          errorDetails += `检查文件失败: ${fsError.message}\n`;
+        }
+      }
+      
+      // 添加系统环境变量PATH信息
+      errorDetails += `\n系统PATH环境变量: ${process.env.PATH}\n`;
+      
+      dialog.showErrorBox(i18n.t('python_script_error'), errorDetails);
       reject(error);
     });
   });
@@ -539,22 +697,55 @@ async function processJigFiles(rutFiles, adrFile) {
 
 function runFailParser(filePath) {
   return new Promise((resolve, reject) => {
-    // 在开发环境和打包环境中都能正确找到Python脚本
-    let scriptPath;
+    let command;
+    let args;
+    
     if (app.isPackaged) {
-      // 打包环境下，Python脚本位于resources/python目录
-      scriptPath = path.join(process.resourcesPath, 'python', 'parse_fails.py');
-      console.log(`[runFailParser] Using packaged script path: ${scriptPath}`);
+      // 在打包环境中，直接使用打包好的可执行文件
+      if (process.platform === 'win32') {
+        // Windows环境下使用打包的exe文件
+        const exePath = path.join(process.resourcesPath, 'python', 'parse_fails.exe');
+        console.log(`[runFailParser] Using packaged executable: ${exePath}`);
+        
+        try {
+          const fs = require('fs');
+          if (fs.existsSync(exePath)) {
+            // 直接使用可执行文件，不需要Python解释器
+            command = exePath;
+            args = [filePath]; // 只传入文件参数，不需要脚本路径
+          } else {
+            console.error(`[runFailParser] Packaged executable not found: ${exePath}`);
+            // 回退到脚本模式
+            const scriptPath = path.join(process.resourcesPath, 'python', 'parse_fails.py');
+            command = 'py';
+            args = [scriptPath, filePath];
+          }
+        } catch (error) {
+          console.error(`[runFailParser] Error checking executable: ${error.message}`);
+          // 回退到脚本模式
+          const scriptPath = path.join(process.resourcesPath, 'python', 'parse_fails.py');
+          command = 'py';
+          args = [scriptPath, filePath];
+        }
+      } else {
+        // 非Windows环境
+        const scriptPath = path.join(process.resourcesPath, 'python', 'parse_fails.py');
+        command = 'python';
+        args = [scriptPath, filePath];
+      }
     } else {
-      // 开发环境下，Python脚本位于app/python目录
-      scriptPath = path.join(__dirname, '../../app/python/parse_fails.py');
+      // 开发环境下使用Python解释器
+      const scriptPath = path.join(__dirname, '../../app/python/parse_fails.py');
+      command = 'python';
+      args = [scriptPath, filePath];
       console.log(`[runFailParser] Using development script path: ${scriptPath}`);
     }
     
     console.log(`[runFailParser] Processing file: ${filePath}`);
-    console.log(`[runFailParser] Current working directory: ${process.cwd()}`);
+    console.log(`[runFailParser] Using command: ${command}`);
+    console.log(`[runFailParser] With args: ${args.join(' ')}`);
     
-    const pythonProcess = spawn('python', [scriptPath, filePath]);
+    const pythonProcess = spawn(command, args);
 
     let stdout = '';
     let stderr = '';

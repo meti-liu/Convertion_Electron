@@ -42,7 +42,7 @@
   "toggle_network_monitor": "ネットワークモニターの切り替え",
   "network_monitor_title": "ネットワークモニター",
   "auto_load_error": "自動読み込みエラー",
-  "auto_load_error_message": "「doc」ディレクトリからの治具データの自動読み込みに失敗しました。",
+  "auto_load_error_message": "「fixtures」ディレクトリからの治具データの自動読み込みに失敗しました。",
   "jig_files": "治具ファイル",
   "file_selection_error": "ファイル選択エラー",
   "file_selection_error_message": "少なくとも1つの.RUTファイルと1つの.ADRファイルを選択する必要があります。",

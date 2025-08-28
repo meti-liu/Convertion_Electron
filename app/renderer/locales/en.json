@@ -42,7 +42,7 @@
   "toggle_network_monitor": "Toggle Network Monitor",
   "network_monitor_title": "Network Monitor",
   "auto_load_error": "Auto-load Error",
-  "auto_load_error_message": "Failed to automatically load jig data from the \"doc\" directory.",
+  "auto_load_error_message": "Failed to automatically load jig data from the fixtures directory.",
   "jig_files": "Jig Files",
   "file_selection_error": "File Selection Error",
   "file_selection_error_message": "You must select at least one .RUT file and one .ADR file.",

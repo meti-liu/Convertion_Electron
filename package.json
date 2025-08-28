@@ -19,13 +19,17 @@
     "files": [
       "app/**/*",
       "data/**/*",
-      "test/**/*",
+      "dist_web/**/*",
       "node_modules/**/*"
     ],
     "extraResources": [
       {
         "from": "app/python",
         "to": "python"
+      },
+      {
+        "from": "test/fixtures",
+        "to": "test/fixtures"
       }
     ]
   },

@@ -40,7 +40,7 @@
   "toggle_network_monitor": "切换网络监视器",
   "network_monitor_title": "网络监视器",
   "auto_load_error": "自动加载错误",
-  "auto_load_error_message": "从 \"doc\" 目录自动加载治具数据失败。",
+  "auto_load_error_message": "从 fixtures 目录自动加载治具数据失败。",
   "jig_files": "治具文件",
   "file_selection_error": "文件选择错误",
   "file_selection_error_message": "您必须至少选择一个 .RUT 文件和一个 .ADR 文件。",
