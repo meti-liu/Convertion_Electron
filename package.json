@@ -25,7 +25,14 @@
     "extraResources": [
       {
         "from": "app/python",
-        "to": "python"
+        "to": "python",
+        "filter": [
+          "**/*.exe",
+          "!**/*.py",
+          "!**/*.spec",
+          "!**/dist/**",
+          "!**/converters/**"
+        ]
       },
       {
         "from": "test/fixtures",
