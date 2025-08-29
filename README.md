@@ -65,6 +65,7 @@ Jig Viewer 是一个专为电子制造业设计的高性能桌面应用程序，
 - **网络通信**: Node.js net模块
 - **XML解析**: xml2js
 - **Python集成**: 子进程调用与JSON通信
+- **版本管理**: Git + GitHub，采用迭代式开发和语义化版本控制
 
 ## 项目架构
 
@@ -333,19 +334,6 @@ npm run build
    - 使用防抖和节流优化频繁操作
    - 异步加载和处理大型数据文件
 
-## 贡献指南
-
-欢迎提交问题报告和功能请求。如需贡献代码，请遵循以下步骤：
-
-1. Fork 本仓库
-2. 创建您的特性分支 (`git checkout -b feature/amazing-feature`)
-3. 提交您的更改 (`git commit -m 'Add some amazing feature'`)
-4. 推送到分支 (`git push origin feature/amazing-feature`)
-5. 打开一个 Pull Request
-
-## 许可证
-
-本项目采用 ISC 许可证 - 详情请参阅 [LICENSE](LICENSE) 文件
 
 ## 联系方式
 
