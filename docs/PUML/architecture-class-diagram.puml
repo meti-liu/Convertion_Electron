@@ -1,0 +1,259 @@
+@startuml JIG_Viewer_Architecture
+
+!theme plain
+title JIG Viewer - 治具数据可视化工具架构图
+
+package "Electron Main Process" {
+  class BackgroundMain {
+    -mainWindow: BrowserWindow
+    -networkMonitorWindow: BrowserWindow
+    -db: sqlite3.Database
+    -currentLocale: string
+    -dbPath: string
+    +createWindow(): void
+    +createNetworkMonitorWindow(): void
+    +initDatabase(): void
+    +loadURLWithRetry(win, url, options): Promise<void>
+    +handleFileLoad(): void
+    +handleFailLogLoad(): void
+    +spawnPythonProcess(scriptName, args): Promise
+  }
+
+  class TCPHandler {
+    -server: net.Server
+    -sockets: Array
+    -networkWindow: BrowserWindow
+    +startServer(host, port): void
+    +stopServer(): void
+    +setWindows(main, network): void
+    +sendStatus(channel, status, data): void
+    +processParsedXml(xmlData): void
+    +copyFile(sourcePath, destDir): void
+    +handleXMLTestResult(xmlData): void
+    +autoProcessReceivedData(): void
+  }
+
+  class I18nBackend {
+    -translations: Object
+    -currentLocale: string
+    +t(key): string
+    +setLocale(locale): void
+    +getAvailableLocales(): Array
+    +syncWithRenderer(locale): void
+  }
+
+  class PreloadScript {
+    +exposeElectronAPI(): void
+    +setupIpcRenderer(): void
+    +defineSecureAPI(): void
+  }
+}
+
+package "Vue.js Renderer Process" {
+  class App {
+    -chartDataTop: Object
+    -chartDataBot: Object
+    -highlightedPinIds: Array
+    -selectedPinId: string
+    -failedPins: Array
+    -fail_data: Object
+    -currentLogIndex: number
+    -logFiles: Array
+    +handleHighlightPins(pins): void
+    +handleSelectPin(pinId): void
+    +loadJigData(): void
+    +processFailureData(): void
+    +loadFailLogs(): void
+    +navigateLogFiles(direction): void
+    +exportSVG(): void
+  }
+
+  class ControlPanel {
+    +render(): VNode
+    +hostSlotContent(): void
+  }
+
+  class JigChartSVG {
+    -svgData: Object
+    -highlightedPins: Array
+    -selectedPin: string
+    -zoomLevel: number
+    -panOffset: Point
+    -operationHistory: Array
+    -currentMode: string
+    +renderSVG(): void
+    +updateHighlights(): void
+    +handleSVGClick(event): void
+    +switchMode(mode): void
+    +zoomToRegion(bbox): void
+    +panView(dx, dy): void
+    +resetView(): void
+    +undo(): void
+    +redo(): void
+    +exportToSVG(): void
+  }
+
+  class JigChart {
+    -chartData: Object
+    -title: string
+    +initChart(): void
+    +updateChart(): void
+    +delegateToSVG(): void
+  }
+
+  class PinInspector {
+    -failedPins: Array
+    -failData: Object
+    -selectedPin: Object
+    -errorTypes: Array
+    +inspectPin(pinId): Object
+    +getFailureDetails(pinId): Object
+    +highlightFailedPins(): void
+    +selectPin(pinId): void
+    +categorizeErrors(): Object
+    +filterByErrorType(type): Array
+    +displayErrorSummary(): void
+  }
+
+  class NetworkMonitor {
+    -connectionStatus: string
+    -tcpServer: Object
+    -hostIP: string
+    -port: number
+    -logMessages: Array
+    +monitorConnections(): void
+    +displayNetworkInfo(): void
+    +updateStatus(status): void
+    +startTCPServer(): void
+    +stopTCPServer(): void
+    +clearLogs(): void
+  }
+
+  class FpsMonitor {
+    -fps: number
+    -lastTime: number
+    +startMonitoring(): void
+    +updateFPS(): void
+    +displayFPS(): void
+  }
+
+  class LanguageSwitcher {
+    -currentLocale: string
+    -availableLocales: Array
+    +switchLanguage(locale): void
+    +getAvailableLanguages(): Array
+    +syncWithBackend(locale): void
+  }
+}
+
+package "Python Processing Scripts" {
+  class JsonScript {
+    +process_jig_unit(coords, x_offset, y_offset, name): Array
+    +read_rut_file_for_offset(file_path): tuple
+    +extract_coordinates(file_path): Array
+    +calculate_intersection_point(coord1, coord2, coord3, coord4): tuple
+    +main(input_file, output_file): void
+  }
+
+  class ParseFails {
+    +parse_failure_logs(log_file): Object
+    +extract_pin_failures(data): Array
+    +process_test_results(result_file): Object
+    +main(log_file, output_file): void
+  }
+
+  package "Converters" {
+    class Convert2 {
+      +convert_format2(input_data): Object
+    }
+    
+    class Convert3 {
+      +convert_format3(input_data): Object
+    }
+    
+    class Convert4 {
+      +convert_format4(input_data): Object
+    }
+  }
+}
+
+package "Data Layer" {
+  class Database {
+    -dbPath: string
+    -connection: sqlite3.Database
+    +createTables(): void
+    +insertFailure(pin_number, error_type, log_file): void
+    +getFailures(filters): Array
+    +updateFailure(id, data): void
+    +deleteFailure(id): void
+  }
+
+  class FileSystem {
+    +readRUTFile(filePath): Object
+    +writeJSONFile(filePath, data): void
+    +readLogFile(filePath): string
+    +copyTestFiles(source, dest): void
+  }
+}
+
+package "Configuration & Localization" {
+  class I18nConfig {
+    -locales: Object
+    -currentLocale: string
+    +loadTranslations(): void
+    +setLocale(locale): void
+    +t(key, params): string
+  }
+
+  class ViteConfig {
+    +defineConfig(): Object
+    +setupBuild(): Object
+    +setupDev(): Object
+  }
+}
+
+' Relationships
+BackgroundMain --> TCPHandler : uses
+BackgroundMain --> I18nBackend : uses
+BackgroundMain --> Database : manages
+BackgroundMain --> PreloadScript : loads
+
+App --> ControlPanel : contains
+App --> JigChart : contains multiple
+App --> PinInspector : contains
+App --> FpsMonitor : contains
+App --> LanguageSwitcher : contains
+
+ControlPanel --> PinInspector : hosts
+JigChart --> JigChartSVG : alternative view
+PinInspector --> Database : queries failures
+NetworkMonitor --> TCPHandler : monitors
+
+BackgroundMain --> JsonScript : spawns process
+BackgroundMain --> ParseFails : spawns process
+JsonScript --> Convert2 : uses
+JsonScript --> Convert3 : uses
+JsonScript --> Convert4 : uses
+
+App --> I18nConfig : uses
+LanguageSwitcher --> I18nConfig : controls
+I18nBackend --> I18nConfig : syncs with
+
+TCPHandler --> FileSystem : file operations
+Database --> FileSystem : data persistence
+JsonScript --> FileSystem : file I/O
+ParseFails --> FileSystem : log processing
+
+note top of BackgroundMain : Electron主进程\n管理应用生命周期\n协调Python脚本调用\n处理文件对话框和IPC通信
+
+note top of App : Vue.js根组件\n管理应用状态\n协调双图表显示(TOP/BOT)\n处理错误日志导航
+
+note top of JigChartSVG : 自定义SVG图表组件\n替代Chart.js实现\n支持平移、缩放、框选\n实现撤销/重做历史记录
+
+note top of TCPHandler : TCP服务器模块\n与GATS系统通信\nXML数据自动处理\n测试文件自动复制
+
+note top of PinInspector : 错误分析组件\n解析CSV错误日志\n支持多错误日志浏览\n提供错误类型分类
+
+note right of I18nBackend : 国际化后端\n支持中/英/日/繁体中文\n前后端语言同步\n动态菜单翻译
+
+@enduml

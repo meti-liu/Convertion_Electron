@@ -1,0 +1,280 @@
+@startuml Vue_Components_Detail_Updated
+
+!theme plain
+title JIG Viewer - Vue.js组件详细架构 (基于README实际功能)
+
+package "Vue.js Application" {
+  
+  class App <<Root Component>> {
+    -chartDataTop: ChartData
+    -chartDataBot: ChartData
+    -highlightedPinIds: Array<string>
+    -selectedPinId: string
+    -failedPins: Array<Pin>
+    -fail_data: FailureData
+    -currentLogIndex: number
+    -logFiles: Array<string>
+    -topPinToZoom: Pin
+    -botPinToZoom: Pin
+    +handleHighlightPins(pins: Array<string>): void
+    +handleSelectPin(pinId: string): void
+    +loadJigData(): void
+    +processFailureData(): void
+    +loadFailLogs(): void
+    +navigateLogFiles(direction: string): void
+    +separateDataByFileName(): void
+    +exportSVG(): void
+    +onLanguageChange(locale: string): void
+  }
+
+  class ControlPanel <<Container Component>> {
+    +slots: Array<VNode>
+    +render(): VNode
+    +hostPinInspector(): void
+  }
+
+  class JigChartSVG <<Main Chart Component>> {
+    -svgData: SVGData
+    -highlightedPins: Array<string>
+    -selectedPin: string
+    -zoomLevel: number
+    -panOffset: Point
+    -operationHistory: Array<Operation>
+    -currentMode: InteractionMode
+    -isDarkTheme: boolean
+    +renderSVG(): void
+    +updateHighlights(): void
+    +handleSVGClick(event: MouseEvent): void
+    +switchMode(mode: InteractionMode): void
+    +enablePanMode(): void
+    +enableZoomMode(): void
+    +enableBoxSelectMode(): void
+    +zoomToRegion(bbox: BoundingBox): void
+    +panView(dx: number, dy: number): void
+    +resetView(): void
+    +undo(): void
+    +redo(): void
+    +exportToSVG(): void
+    +highlightErrorPins(pins: Array): void
+    +centerOnPin(pinId: string): void
+  }
+
+  class JigChart <<Chart Wrapper Component>> {
+    -chartData: ChartData
+    -title: string
+    -side: string
+    +initChart(): void
+    +updateChart(): void
+    +delegateToSVG(): void
+    +handleTopBotSeparation(): void
+  }
+
+  class PinInspector <<Error Analysis Component>> {
+    -failedPins: Array<Pin>
+    -failData: FailureData
+    -selectedPin: Pin
+    -errorTypes: Array<ErrorType>
+    -currentLogFile: string
+    -errorSummary: Object
+    +inspectPin(pinId: string): PinDetails
+    +getFailureDetails(pinId: string): FailureDetails
+    +highlightFailedPins(): void
+    +selectPin(pinId: string): void
+    +categorizeErrors(): Object
+    +filterByErrorType(type: ErrorType): Array<Pin>
+    +displayErrorSummary(): void
+    +navigateToNextError(): void
+    +navigateToPrevError(): void
+    +exportErrorReport(): void
+    +loadCSVErrorLog(filePath: string): void
+  }
+
+  class NetworkMonitor <<TCP Monitor Component>> {
+    -connectionStatus: ConnectionStatus
+    -tcpServer: TCPServerInfo
+    -hostIP: string
+    -port: number
+    -connectedClients: Array<Client>
+    -logMessages: Array<LogMessage>
+    -isServerRunning: boolean
+    -xmlProcessor: XMLProcessor
+    +monitorConnections(): void
+    +displayNetworkInfo(): void
+    +updateStatus(status: ConnectionStatus): void
+    +startTCPServer(host: string, port: number): void
+    +stopTCPServer(): void
+    +clearLogs(): void
+    +exportLogs(): void
+    +handleGATSConnection(): void
+    +processXMLTestResults(xmlData: string): void
+    +autoProcessReceivedData(): void
+  }
+
+  class FpsMonitor <<Performance Component>> {
+    -fps: number
+    -lastTime: number
+    -frameCount: number
+    -isVisible: boolean
+    -performanceStats: Object
+    +startMonitoring(): void
+    +stopMonitoring(): void
+    +updateFPS(): void
+    +displayFPS(): void
+    +toggleVisibility(): void
+    +resetStats(): void
+    +trackRenderTime(): void
+  }
+
+  class LanguageSwitcher <<i18n Component>> {
+    -currentLocale: string
+    -availableLocales: Array<Locale>
+    -isDropdownOpen: boolean
+    +switchLanguage(locale: string): void
+    +getAvailableLanguages(): Array<Locale>
+    +getCurrentLanguage(): Locale
+    +toggleDropdown(): void
+    +syncWithBackend(locale: string): void
+    +updateMenuTranslations(): void
+  }
+}
+
+package "Data Models & Structures" {
+  class ChartData {
+    +datasets: Array<Dataset>
+    +labels: Array<string>
+    +options: ChartOptions
+    +topSideData: Object
+    +botSideData: Object
+  }
+
+  class Pin {
+    +id: string
+    +number: number
+    +x: number
+    +y: number
+    +status: PinStatus
+    +failures: Array<Failure>
+    +side: string
+  }
+
+  class FailureData {
+    +pins: Array<Pin>
+    +summary: FailureSummary
+    +timestamp: Date
+    +logFile: string
+    +errorTypes: Array<string>
+  }
+
+  class Failure {
+    +id: number
+    +pin_number: number
+    +error_type: string
+    +log_file: string
+    +timestamp: Date
+    +severity: string
+  }
+
+  class InteractionMode {
+    +PAN: string
+    +ZOOM: string
+    +BOX_SELECT: string
+  }
+
+  class Operation {
+    +type: string
+    +data: Object
+    +timestamp: Date
+  }
+}
+
+package "Services & Utilities" {
+  class ElectronAPI {
+    +loadFile(filePath: string): Promise<FileData>
+    +saveFile(filePath: string, data: any): Promise<void>
+    +showDialog(options: DialogOptions): Promise<DialogResult>
+    +sendToMain(channel: string, data: any): void
+    +onMainMessage(channel: string, callback: Function): void
+    +spawnPythonScript(scriptName: string, args: Array): Promise
+  }
+
+  class SVGUtils {
+    +createSVGElement(tag: string, attrs: Object): SVGElement
+    +updateSVGTransform(element: SVGElement, transform: string): void
+    +exportSVGWithDarkTheme(svgElement: SVGElement): string
+    +calculateBoundingBox(elements: Array): BoundingBox
+    +addHighlightEffect(element: SVGElement): void
+  }
+
+  class I18nService {
+    -locale: string
+    -messages: Object
+    +t(key: string, params?: Object): string
+    +setLocale(locale: string): void
+    +getLocale(): string
+    +loadMessages(locale: string): Promise<Object>
+    +syncWithBackend(locale: string): void
+  }
+
+  class HistoryManager {
+    -operations: Array<Operation>
+    -currentIndex: number
+    +pushOperation(operation: Operation): void
+    +undo(): Operation
+    +redo(): Operation
+    +canUndo(): boolean
+    +canRedo(): boolean
+    +clear(): void
+  }
+}
+
+' Component Relationships
+App --> ControlPanel : contains
+App --> JigChart : contains (2 instances for TOP/BOT)
+App --> FpsMonitor : contains
+App --> LanguageSwitcher : contains
+
+ControlPanel --> PinInspector : hosts as slot content
+
+JigChart --> JigChartSVG : delegates to
+JigChartSVG --> SVGUtils : uses
+JigChartSVG --> HistoryManager : uses for undo/redo
+JigChartSVG --> ElectronAPI : uses for export
+
+PinInspector --> ElectronAPI : uses for data loading
+PinInspector --> I18nService : uses for translations
+
+NetworkMonitor --> ElectronAPI : uses for server communication
+
+FpsMonitor --> ElectronAPI : uses for performance data
+
+LanguageSwitcher --> I18nService : controls
+LanguageSwitcher --> ElectronAPI : syncs with main process
+
+' Data Flow
+App --> ChartData : manages
+App --> FailureData : manages
+PinInspector --> Pin : displays
+PinInspector --> Failure : analyzes
+JigChart --> ChartData : renders
+JigChartSVG --> ChartData : alternative rendering
+
+' Events (shown as dependencies for clarity)
+PinInspector ..> App : @highlight-pins
+PinInspector ..> App : @select-pin
+JigChartSVG ..> App : @pin-click
+JigChartSVG ..> App : @mode-change
+LanguageSwitcher ..> App : @language-change
+
+note top of App : Vue.js根组件\n管理全局状态\n协调双图表显示(TOP/BOT)\n处理错误日志文件导航
+
+note top of JigChartSVG : 自定义SVG图表组件\n从Chart.js迁移而来\n支持平移/缩放/框选模式\n实现撤销重做历史记录\n黑色主题专业显示
+
+note top of PinInspector : 错误分析组件\n解析CSV错误日志\n支持多个错误日志浏览\n提供错误类型分类和统计\n点击针点自动放大居中
+
+note right of ElectronAPI : 安全的Electron API桥接\n通过preload.js暴露\n支持Python脚本调用\n处理文件I/O操作
+
+note bottom of NetworkMonitor : TCP服务器监控组件\n与GATS系统实时通信\nXML测试结果自动处理\n测试文件自动复制功能
+
+note right of LanguageSwitcher : 多语言切换组件\n支持中/英/日/繁体中文\n前后端语言设置同步\nElectron菜单动态翻译
+
+@enduml

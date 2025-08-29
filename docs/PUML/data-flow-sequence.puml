@@ -1,0 +1,143 @@
+@startuml Data_Flow_Sequence
+
+!theme plain
+title JIG Viewer - Data Flow and IPC Communication
+
+actor User
+participant "Vue App" as Vue
+participant "Electron Main" as Main
+participant "TCP Handler" as TCP
+participant "Python Scripts" as Python
+participant "Database" as DB
+participant "File System" as FS
+
+== Application Startup ==
+User -> Main : Start Application
+Main -> Main : Initialize Database
+Main -> Main : Create Main Window
+Main -> Vue : Load Renderer Process
+Vue -> Vue : Initialize Vue Components
+Vue -> Main : Request Initial Data (via IPC)
+Main -> DB : Query Existing Failures
+DB -> Main : Return Failure Data
+Main -> Vue : Send Failure Data (via IPC)
+Vue -> Vue : Update UI with Failure Data
+
+== File Loading Process ==
+User -> Vue : Select RUT File
+Vue -> Main : Load File Request (via IPC)
+Main -> FS : Validate File Exists
+FS -> Main : File Validation Result
+Main -> Python : Spawn json_script.exe
+Python -> FS : Read RUT File
+FS -> Python : Return File Content
+Python -> Python : Extract Coordinates
+Python -> Python : Apply Corner Cutting
+Python -> Python : Calculate Offsets
+Python -> FS : Write JSON Output
+FS -> Python : Confirm Write Success
+Python -> Main : Process Complete
+Main -> FS : Read Generated JSON
+FS -> Main : Return Processed Data
+Main -> Vue : Send Chart Data (via IPC)
+Vue -> Vue : Update Chart Components
+
+== Failure Analysis Process ==
+User -> Vue : Load Test Log
+Vue -> Main : Analyze Failures Request (via IPC)
+Main -> Python : Spawn parse_fails.exe
+Python -> FS : Read Log File
+FS -> Python : Return Log Content
+Python -> Python : Parse Failure Entries
+Python -> Python : Extract Pin Failures
+Python -> Python : Categorize Errors
+Python -> FS : Write Failure JSON
+FS -> Python : Confirm Write Success
+Python -> Main : Analysis Complete
+Main -> FS : Read Failure Report
+FS -> Main : Return Failure Data
+Main -> DB : Store Failures in Database
+DB -> Main : Confirm Storage
+Main -> Vue : Send Failure Analysis (via IPC)
+Vue -> Vue : Update Pin Inspector
+Vue -> Vue : Highlight Failed Pins
+
+== TCP Network Communication ==
+Main -> TCP : Start TCP Server
+TCP -> TCP : Listen on Port
+note right : External test equipment connects
+TCP -> TCP : Accept Connection
+TCP -> TCP : Receive XML Data
+TCP -> TCP : Parse XML Content
+TCP -> FS : Save Test Files
+FS -> TCP : Confirm File Save
+TCP -> Main : Notify New Data Available
+Main -> Vue : Update Network Status (via IPC)
+Vue -> Vue : Show Connection Status
+TCP -> Python : Trigger Automatic Processing
+Python -> FS : Process New Test Data
+FS -> Python : Return Processed Results
+Python -> TCP : Processing Complete
+TCP -> Main : Data Processing Done
+Main -> Vue : Refresh Data (via IPC)
+Vue -> Vue : Update Charts with New Data
+
+== Interactive Pin Selection ==
+User -> Vue : Click on Pin
+Vue -> Vue : Handle Pin Click Event
+Vue -> Vue : Emit @select-pin Event
+Vue -> Vue : Update Selected Pin State
+Vue -> Main : Request Pin Details (via IPC)
+Main -> DB : Query Pin Failure History
+DB -> Main : Return Pin Details
+Main -> Vue : Send Pin Information (via IPC)
+Vue -> Vue : Display Pin Inspector Details
+Vue -> Vue : Highlight Pin on Charts
+Vue -> Vue : Update Pin Status Display
+
+== Language Change ==
+User -> Vue : Select New Language
+Vue -> Vue : Update i18n Locale
+Vue -> Main : Sync Language Change (via IPC)
+Main -> Main : Update Backend i18n
+Main -> Main : Update Menu Labels
+Main -> Vue : Confirm Language Sync (via IPC)
+Vue -> Vue : Re-render All Components
+
+== Chart Export ==
+User -> Vue : Request Chart Export
+Vue -> Vue : Prepare Chart Data
+Vue -> Main : Export Chart Request (via IPC)
+Main -> FS : Create Export Directory
+FS -> Main : Directory Created
+Main -> FS : Write Chart Image/Data
+FS -> Main : Export Complete
+Main -> Vue : Export Success (via IPC)
+Vue -> Vue : Show Export Confirmation
+
+== Error Handling ==
+Python -> Python : Processing Error Occurs
+Python -> Main : Report Error
+Main -> Main : Log Error Details
+Main -> Vue : Send Error Notification (via IPC)
+Vue -> Vue : Display Error Message
+Vue -> Vue : Maintain Application State
+
+== Application Cleanup ==
+User -> Main : Close Application
+Main -> TCP : Stop TCP Server
+TCP -> TCP : Close All Connections
+Main -> DB : Close Database Connection
+DB -> Main : Connection Closed
+Main -> Python : Terminate Python Processes
+Python -> Main : Processes Terminated
+Main -> Main : Cleanup Resources
+Main -> Main : Exit Application
+
+note over Vue, FS : All IPC communication is secured through\nElectron's context isolation and preload scripts
+
+note over Python : Python scripts run as separate processes\nfor security and stability isolation
+
+note over TCP : TCP server handles real-time data\nfrom external test equipment
+
+@enduml
